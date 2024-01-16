@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "prediction-request"
+version = "0.1.0"
+description = ""
+authors = ["Richard Blythman <richardblythman@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+openai = "0.28"
+requests = "^2.31.0"
+spacy = "^3.7.2"
+bs4 = "^0.0.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

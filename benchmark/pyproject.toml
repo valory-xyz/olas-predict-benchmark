@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "benchmark"
+version = "0.1.0"
+description = ""
+authors = ["Richard Blythman <richardblythman@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+ipykernel = "^6.29.0"
+prediction-request = { path = "../tools/prediction_request", develop = true }
+python-dotenv = "^1.0.0"
+pandas = "^2.1.4"
+tqdm = "^4.66.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

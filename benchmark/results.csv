@@ -1,0 +1,8 @@
+prompt,answer,p_yes,p_no,prediction,Correct
+Will there be an initial public offering on either the Shanghai Stock Exchange or the Shenzhen Stock Exchange before 1 January 2016?,yes,0.2,0.8,no,False
+Will the Export-Import Bank of the United States be re-authorized before 1 January 2016?,yes,0.5,0.5,undecided,False
+"Will a trilateral meeting take place between Chinese President Xi Jinping, Japanese Prime Minister Shinzo Abe, and South Korean President Park Geun-hye before 1 January 2016?",no,0.2,0.8,no,True
+Will Iran release Jason Rezaian before 31 October 2016?,yes,0.5,0.5,undecided,False
+"Will North Korea launch a land based missile with the capacity to reach Alaska, Hawaii, or the continental United States before 1 January 2017?",yes,0.2,0.8,no,False
+Will the government of Venezuela or Petroleos de Venezuela S. A. (PDVSA) default on their foreign-currency debt before 1 March 2016?,no,0.2,0.8,no,True
+"Will Russia officially lift any part of its food embargo on the United States, any or all of the European Union member states, Canada, Australia, Norway, Iceland, Albania, Montenegro or Liechtenstein before 6 August 2016?",yes,0.2,0.8,no,False
