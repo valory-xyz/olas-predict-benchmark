@@ -10,6 +10,9 @@ The latest version of the [Autocast dataset can be downloaded here](https://peop
 git clone https://github.com/valory-xyz/olas-predict-benchmark.git
 cd olas-predict-benchmark
 
+# create env and add openai api key
+cp .env.sample .env
+
 # link the data
 mkdir data
 cd data

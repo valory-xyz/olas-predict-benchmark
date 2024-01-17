@@ -20,46 +20,28 @@
 """This module implements a Mech tool for binary predictions."""
 
 from collections import defaultdict
+import json
 from concurrent.futures import Future, ThreadPoolExecutor
-from heapq import nlargest
-from string import punctuation
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Iterator
 
-import openai
 import requests
-import spacy
+from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 from bs4 import BeautifulSoup
-from spacy import Language
-from spacy.cli import download
-from spacy.lang.en import STOP_WORDS
-from spacy.tokens import Doc, Span
-
-
-FrequenciesType = Dict[str, float]
-ScoresType = Dict[Span, float]
-
 
 DEFAULT_OPENAI_SETTINGS = {
     "max_tokens": 500,
     "temperature": 0.7,
 }
 ALLOWED_TOOLS = [
-    "prediction-offline",
-    "prediction-online",
-    "prediction-online-summarized-info",
+    "claude-prediction-offline",
+    "claude-prediction-online",
 ]
-TOOL_TO_ENGINE = {tool: "gpt-3.5-turbo" for tool in ALLOWED_TOOLS}
-# the default number of URLs to fetch online information for
+TOOL_TO_ENGINE = {
+    "claude-prediction-offline": "claude-2",
+    "claude-prediction-online": "claude-2",
+}
 DEFAULT_NUM_URLS = defaultdict(lambda: 3)
-DEFAULT_NUM_URLS["prediction-online-summarized-info"] = 7
-# the default number of words to fetch online information for
 DEFAULT_NUM_WORDS: Dict[str, Optional[int]] = defaultdict(lambda: 300)
-DEFAULT_NUM_WORDS["prediction-online-summarized-info"] = None
-# how much of the initial content will be kept during summarization
-DEFAULT_COMPRESSION_FACTOR = 0.05
-# the vocabulary to use for the summarization
-DEFAULT_VOCAB = "en_core_web_sm"
-
 PREDICTION_PROMPT = """
 You are an LLM inside a multi-agent system that takes in a prompt of a user requesting a probability estimation
 for a given event. You are provided with an input under the label "USER_PROMPT". You must follow the instructions
@@ -99,12 +81,18 @@ OUTPUT_FORMAT
      0 indicates lowest utility; 1 maximum utility.
 * The sum of "p_yes" and "p_no" must equal 1.
 * Output only the JSON object. Do not include any other contents in your response.
+* Never use Markdown syntax highlighting, such as ```json``` to surround the output. Only output the raw json string.
+* This is incorrect:"```json{{\n  \"p_yes\": 0.2,\n  \"p_no\": 0.8,\n  \"confidence\": 0.7,\n  \"info_utility\": 0.5\n}}```"
+* This is incorrect:```json"{{\n  \"p_yes\": 0.2,\n  \"p_no\": 0.8,\n  \"confidence\": 0.7,\n  \"info_utility\": 0.5\n}}"```
+* This is correct:"{{\n  \"p_yes\": 0.2,\n  \"p_no\": 0.8,\n  \"confidence\": 0.7,\n  \"info_utility\": 0.5\n}}"
 """
 
+ASSISTANT_TEXT = "```json"
+STOP_SEQUENCES = ["```"]
 
 def extract_text(
     html: str,
-    num_words: Optional[int],
+    num_words: int = 300,  # TODO: summarise using LLM instead of limit
 ) -> str:
     """Extract text from a single HTML document"""
     soup = BeautifulSoup(html, "html.parser")
@@ -114,15 +102,12 @@ def extract_text(
     lines = (line.strip() for line in text.splitlines())
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
     text = "\n".join(chunk for chunk in chunks if chunk)
-
-    if num_words is None:
-        return text
     return text[:num_words]
 
 
 def process_in_batches(
     urls: List[str], window: int = 5, timeout: int = 10
-) -> Generator[None, None, List[Tuple[Future, str]]]:
+) -> Iterator[List[Tuple[Future, str]]]:
     """Iter URLs in batches."""
     with ThreadPoolExecutor() as executor:
         for i in range(0, len(urls), window):
@@ -134,7 +119,7 @@ def process_in_batches(
             yield futures
 
 
-def extract_texts(urls: List[str], num_words: Optional[int]) -> List[str]:
+def extract_texts(urls: List[str], num_words: int = 300) -> List[str]:
     """Extract texts from URLs"""
     max_allowed = 5
     extracted_texts = []
@@ -169,83 +154,21 @@ def fetch_additional_information(
 ) -> str:
     """Fetch additional information."""
     urls = source_links[:num_urls]
-    print('URLs: ', urls)
-    texts = extract_texts(urls, num_words)
+    texts = extract_texts(urls)
     return "\n".join(["- " + text for text in texts])
 
 
-def load_model(vocab: str) -> Language:
-    """Utilize spaCy to load the model and download it if it is not already available."""
-    try:
-        return spacy.load(vocab)
-    except OSError:
-        print("Downloading language model...")
-        download(vocab)
-        return spacy.load(vocab)
-
-
-def calc_word_frequencies(doc: Doc) -> FrequenciesType:
-    """Get the frequency of each word in the given text, excluding stop words and punctuations."""
-    word_frequencies = defaultdict(lambda: 0)
-    for token in doc:
-        word = token.text
-        lower = word.lower()
-        if lower not in STOP_WORDS.union(punctuation):
-            word_frequencies[lower] += 1
-
-    max_frequency = max(word_frequencies.values())
-    normalized_frequencies = defaultdict(
-        lambda: 0,
-        {
-            word: frequency / max_frequency
-            for word, frequency in word_frequencies.items()
-        },
-    )
-    return normalized_frequencies
-
-
-def calc_sentence_scores(
-    sentence_tokens: List[Span], word_frequencies: FrequenciesType
-) -> ScoresType:
-    """Calculate the sentence scores."""
-    sentence_scores = defaultdict(lambda: 0)
-    for sentence in sentence_tokens:
-        for token in sentence:
-            sentence_scores[sentence] += word_frequencies[token.text.lower()]
-
-    return sentence_scores
-
-
-def summarize(text: str, compression_factor: float, vocab: str) -> str:
-    """Summarize the given text, retaining the given compression factor."""
-    if not text:
-        raise ValueError("Cannot summarize empty text!")
-
-    nlp = load_model(vocab)
-    doc = nlp(text)
-    word_frequencies = calc_word_frequencies(doc)
-    sentence_tokens = list(doc.sents)
-    sentence_scores = calc_sentence_scores(sentence_tokens, word_frequencies)
-    n = int(len(sentence_tokens) * compression_factor)
-    summary = nlargest(n, sentence_scores, key=sentence_scores.get)
-    summary_words = [word.text for word in summary]
-    summary_text = "".join(summary_words)
-    return summary_text
-
-
-def run(**kwargs) -> Tuple[str, Optional[Dict[str, Any]]]:
+def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     """Run the task"""
     tool = kwargs["tool"]
     prompt = kwargs["prompt"]
     source_links = kwargs["source_links"]
-    max_tokens = kwargs.get("max_tokens", DEFAULT_OPENAI_SETTINGS["max_tokens"])
-    temperature = kwargs.get("temperature", DEFAULT_OPENAI_SETTINGS["temperature"])
     num_urls = kwargs.get("num_urls", DEFAULT_NUM_URLS[tool])
     num_words = kwargs.get("num_words", DEFAULT_NUM_WORDS[tool])
-    compression_factor = kwargs.get("compression_factor", DEFAULT_COMPRESSION_FACTOR)
-    vocab = kwargs.get("vocab", DEFAULT_VOCAB)
+ 
 
-    openai.api_key = kwargs["api_keys"]["openai"]
+    anthropic = Anthropic(api_key=kwargs["api_keys"]["anthropic"])
+
     if tool not in ALLOWED_TOOLS:
         raise ValueError(f"Tool {tool} is not supported.")
 
@@ -256,33 +179,18 @@ def run(**kwargs) -> Tuple[str, Optional[Dict[str, Any]]]:
             num_urls,
             num_words,
         )
-        if tool.startswith("prediction-online")
+        if tool == "claude-prediction-online"
         else ""
     )
-    print('Additional information: ', additional_information)
-    if additional_information and tool == "prediction-online-summarized-info":
-        additional_information = summarize(
-            additional_information, compression_factor, vocab
-        )
-
     prediction_prompt = PREDICTION_PROMPT.format(
         user_prompt=prompt, additional_information=additional_information
     )
-    moderation_result = openai.Moderation.create(prediction_prompt)
-    if moderation_result["results"][0]["flagged"]:
-        return "Moderation flagged the prompt as in violation of terms.", None, None
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": prediction_prompt},
-    ]
-    response = openai.ChatCompletion.create(
+    prediction_prompt = f"{HUMAN_PROMPT}{prediction_prompt}{AI_PROMPT}{ASSISTANT_TEXT}"
+
+    completion = anthropic.completions.create(
         model=engine,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        n=1,
-        timeout=150,
-        request_timeout=150,
-        stop=None,
+        max_tokens_to_sample=300,
+        prompt=prediction_prompt,
+        stop_sequences=STOP_SEQUENCES,
     )
-    return response.choices[0].message.content, prediction_prompt, None
+    return completion.completion, prediction_prompt, None

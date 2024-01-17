@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
+import csv
 from dotenv import load_dotenv
 import json
 import os
 import pandas as pd
-from prediction_request import tool as prediction_request_tool
-from prediction_request_sme import tool as prediction_request_sme_tool
+from prediction_request import prediction_request
+from prediction_request_sme import prediction_request_sme
+from prediction_request_claude import prediction_request_claude
 from tqdm import tqdm
-from benchmark.utils import get_logger
+from utils import get_logger
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -21,9 +23,11 @@ def tool_map(tool):
         "prediction-offline",
         "prediction-online-summarized-info",
     ]:
-        return prediction_request_tool
+        return prediction_request
     elif tool in ["prediction-offline-sme", "prediction-online-sme"]:
-        return prediction_request_sme_tool
+        return prediction_request_sme
+    elif tool in ["claude-prediction-offline", "claude-prediction-online"]:
+        return prediction_request_claude
     else:
         raise Exception(f"Tool {tool} not found.")
 
@@ -35,10 +39,8 @@ def run_benchmark(kwargs):
 
     test_questions = json.load(open("./data/autocast/autocast_questions.json"))
 
-    results_df = pd.DataFrame()
-    summary_df = pd.DataFrame()
     tools = kwargs.pop("tools")
-    num_questions = kwargs.pop("num_questions", 10)
+    num_questions = kwargs.pop("num_questions", len(test_questions))
 
     # Prepare the questions
     questions = []
@@ -52,86 +54,93 @@ def run_benchmark(kwargs):
 
     logger.info(f"Running {num_questions} questions for each tool: {tools}")
 
-    for t in tools:
-        for test_question in tqdm(
-            questions, desc=f"Running tool {t}", total=len(questions)
-        ):
-            test_q = {
-                "prompt": test_question["question"],
-                "source_links": test_question["source_links"],
-                "answer": test_question["answer"],
-                "tool": t,
-            }
+    with open("results.csv", mode="a", newline="") as file:
+        fieldnames = [
+            "prompt",
+            "answer",
+            "tool",
+            "p_yes",
+            "p_no",
+            "prediction",
+            "Correct",
+        ]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        csv_file_path = "results.csv"
 
-            try:
-                tool = tool_map(t)
-                response = tool.run(**{**test_q, **kwargs})
-                result = json.loads(response[0])
-                test_q["p_yes"] = float(result["p_yes"])
-                test_q["p_no"] = float(result["p_no"])
-                test_q["prompt_response"] = response[1].replace(os.linesep, "")
+        if file.tell() == 0:
+            writer.writeheader()
 
-                if float(result["p_yes"]) == float(result["p_no"]):
-                    test_q["prediction"] = "undecided"
-                else:
-                    test_q["prediction"] = (
-                        "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
-                    )
+        for t in tools:
+            for test_question in tqdm(
+                questions, desc=f"Running tool {t}", total=len(questions)
+            ):
+                test_q = {
+                    "prompt": test_question["question"],
+                    "source_links": test_question["source_links"],
+                    "answer": test_question["answer"],
+                    "tool": t,
+                }
 
-                test_q["Correct"] = test_q["prediction"] == test_q["answer"]
+                try:
+                    tool = tool_map(t)
+                    response = tool.run(**{**test_q, **kwargs})
+                    result = json.loads(response[0])
+                    test_q["p_yes"] = float(result["p_yes"])
+                    test_q["p_no"] = float(result["p_no"])
+                    # test_q["prompt_response"] = response[1].replace(os.linesep, "")
 
-                results_df = pd.concat(
-                    [
-                        results_df,
-                        pd.DataFrame([test_q]).drop(
-                            ["source_links", "prompt_response"], axis=1
-                        ),
-                    ]
-                )
+                    if float(result["p_yes"]) == float(result["p_no"]):
+                        test_q["prediction"] = "undecided"
+                    else:
+                        test_q["prediction"] = (
+                            "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
+                        )
 
-            except Exception as e:
-                logger.error(f"Error running benchmark for tool {t}: {e}")
+                    test_q["Correct"] = test_q["prediction"] == test_q["answer"]
 
-        tool_df = results_df[results_df["tool"] == t]
-        accuracy = tool_df["Correct"].mean()
-        num_correct = tool_df["Correct"].sum()
-        num_total = tool_df["Correct"].count()
+                    del test_q["source_links"]
 
-        summary_df = pd.concat(
-            [
-                summary_df,
-                pd.DataFrame(
-                    [
-                        {
-                            "tool": t,
-                            "accuracy": accuracy,
-                            "num_correct": num_correct,
-                            "num_total": num_total,
-                        }
-                    ]
-                ),
-            ]
-        )
-        logger.info(f"Tool {t} accuracy: {accuracy}")
+                    writer.writerow(test_q)
+
+                except Exception as e:
+                    logger.error(f"Error running benchmark for tool {t}: {e}")
+
+    results_df = pd.read_csv(csv_file_path)
+    tool_df = results_df[results_df["tool"] == t]
+    accuracy = tool_df["Correct"].mean()
+    num_correct = tool_df["Correct"].sum()
+    num_total = tool_df["Correct"].count()
+
+    summary_df = pd.DataFrame(
+        {
+            "tool": [t],
+            "accuracy": [accuracy],
+            "num_correct": [num_correct],
+            "num_total": [num_total],
+        }
+    )
+    logger.info(f"Tool {t} accuracy: {accuracy}")
 
     logger.info("Benchmark tests complete.")
     logger.info(f"Results:\n\n {results_df}")
-    results_df.to_csv("results.csv", index=False)
     summary_df.to_csv("summary.csv", index=False)
 
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 4
+    kwargs["num_questions"] = 2
     kwargs["tools"] = [
         "prediction-online",
         "prediction-offline",
         "prediction-online-summarized-info",
         "prediction-offline-sme",
         "prediction-online-sme",
+        "claude-prediction-offline",
+        "claude-prediction-online",
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
+    kwargs["api_keys"]["anthropic"] = os.getenv("ANTHROPIC_API_KEY")
     kwargs["num_urls"] = 2
 
     run_benchmark(kwargs)

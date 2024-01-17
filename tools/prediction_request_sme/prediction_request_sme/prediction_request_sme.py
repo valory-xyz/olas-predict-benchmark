@@ -206,7 +206,6 @@ def fetch_additional_information(
 ) -> str:
     """Fetch additional information."""
     urls = source_links[:num_urls]
-    print('URLs: ', urls)
     texts = extract_texts(urls, num_words)
     return "\n".join(["- " + text for text in texts])
 
@@ -260,8 +259,6 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
             max_tokens,
             prompt,
         )
-        print(f"SME: {sme}")
-        print(f"SME introduction: {sme_introduction}")
     except Exception as e:
         print(f"An error occurred during SME role creation: {e}")
         print("Using default SME introduction.")
@@ -276,7 +273,6 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
         if tool.startswith("prediction-online")
         else ""
     )
-    print(f"Additional information: {additional_information}")
     prediction_prompt = PREDICTION_PROMPT.format(
         user_prompt=prompt, additional_information=additional_information
     )
