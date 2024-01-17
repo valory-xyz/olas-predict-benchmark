@@ -19,47 +19,28 @@
 
 """This module implements a Mech tool for binary predictions."""
 
-from collections import defaultdict
+import json
 from concurrent.futures import Future, ThreadPoolExecutor
-from heapq import nlargest
-from string import punctuation
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import openai
 import requests
-import spacy
 from bs4 import BeautifulSoup
-from spacy import Language
-from spacy.cli import download
-from spacy.lang.en import STOP_WORDS
-from spacy.tokens import Doc, Span
 
-
-FrequenciesType = Dict[str, float]
-ScoresType = Dict[Span, float]
-
-
+NUM_URLS_EXTRACT = 5
 DEFAULT_OPENAI_SETTINGS = {
     "max_tokens": 500,
     "temperature": 0.7,
 }
 ALLOWED_TOOLS = [
-    "prediction-offline",
-    "prediction-online",
-    "prediction-online-summarized-info",
+    "prediction-offline-sme",
+    "prediction-online-sme",
 ]
-TOOL_TO_ENGINE = {tool: "gpt-3.5-turbo" for tool in ALLOWED_TOOLS}
-# the default number of URLs to fetch online information for
-DEFAULT_NUM_URLS = defaultdict(lambda: 3)
-DEFAULT_NUM_URLS["prediction-online-summarized-info"] = 7
-# the default number of words to fetch online information for
-DEFAULT_NUM_WORDS: Dict[str, Optional[int]] = defaultdict(lambda: 300)
-DEFAULT_NUM_WORDS["prediction-online-summarized-info"] = None
-# how much of the initial content will be kept during summarization
-DEFAULT_COMPRESSION_FACTOR = 0.05
-# the vocabulary to use for the summarization
-DEFAULT_VOCAB = "en_core_web_sm"
-
+TOOL_TO_ENGINE = {
+    "prediction-offline-sme": "gpt-3.5-turbo",
+    "prediction-online-sme": "gpt-3.5-turbo",
+}
+DEFAULT_NUM_WORDS = 300
 PREDICTION_PROMPT = """
 You are an LLM inside a multi-agent system that takes in a prompt of a user requesting a probability estimation
 for a given event. You are provided with an input under the label "USER_PROMPT". You must follow the instructions
@@ -101,10 +82,74 @@ OUTPUT_FORMAT
 * Output only the JSON object. Do not include any other contents in your response.
 """
 
+URL_QUERY_PROMPT = """
+You are an LLM inside a multi-agent system that takes in a prompt of a user requesting a probability estimation
+for a given event. You are provided with an input under the label "USER_PROMPT". You must follow the instructions
+under the label "INSTRUCTIONS". You must provide your response in the format specified under "OUTPUT_FORMAT".
+
+INSTRUCTIONS
+* Read the input under the label "USER_PROMPT" delimited by three backticks.
+* The "USER_PROMPT" specifies an event.
+* The event will only have two possible outcomes: either the event will happen or the event will not happen.
+* If the event has more than two possible outcomes, you must ignore the rest of the instructions and output the response "Error".
+* You must provide your response in the format specified under "OUTPUT_FORMAT".
+* Do not include any other contents in your response.
+
+USER_PROMPT:
+```
+{user_prompt}
+```
+
+OUTPUT_FORMAT
+* Your output response must be only a single JSON object to be parsed by Python's "json.loads()".
+* The JSON must contain two fields: "queries", and "urls".
+   - "queries": An array of strings of size between 1 and 5. Each string must be a search engine query that can help obtain relevant information to estimate
+     the probability that the event in "USER_PROMPT" occurs. You must provide original information in each query, and they should not overlap
+     or lead to obtain the same set of results.
+* Output only the JSON object. Do not include any other contents in your response.
+"""
+
+SME_GENERATION_MARKET_PROMPT = """
+task question: "{question}"
+"""
+
+SME_GENERATION_SYSTEM_PROMPT = """
+This task requires answering Yes or No to a specific question related to certain knowledge domains. The final opinion to the question should be determined by one or more subject matter experts (SME) of the related domains. You need to generate one or more SME roles and their role introduction that you believe to be helpful in forming a correct answer to question in the task.
+
+Examples:
+task question: "Will Apple release iphone 15 by 1 October 2023?"
+[
+        {
+            "sme": "Technology Analyst",
+            "sme_introduction": "You are a seasoned technology analyst AI assistant. Your goal is to do comprehensive research on the news on the tech companies and answer investor's interested questions in a trustful and accurate way."
+        }
+]
+---
+task question: "Will the newly elected ceremonial president of Singapore face any political scandals by 13 September 2023?"
+[
+        { 
+            "sme":  "Political Commentator",
+            "sme_introduction": "You are an experienced political commentator in Asia. Your main objective is to produce comprehensive, insightful and impartial analysis based on the relevant political news and your politic expertise to form an answer to the question releted to a political event or politician."
+        }
+]
+---
+task question: "Will the air strike conflict in Sudan be resolved by 13 September 2023?"
+[
+       {
+            "sme:  "Military Expert",
+            "sme_introduction": "You are an experienced expert in military operation and industry. Your main goal is to faithfully and accurately answer a military related question based on the provided intelligence and your professional experience"
+        },
+       {
+            "sme:  "Diplomat",
+            "sme_introduction": "You are an senior deplomat who engages in diplomacy to foster peaceful relations, negotiate agreements, and navigate complex political, economic, and social landscapes. You need to form an opinion on a question related to international conflicts based on the related information and your understading in geopolitics."
+        },
+]
+"""
+
 
 def extract_text(
-    html: str,
-    num_words: Optional[int],
+        html: str,
+        num_words: int = 300,  # TODO: summerise using GPT instead of limit
 ) -> str:
     """Extract text from a single HTML document"""
     soup = BeautifulSoup(html, "html.parser")
@@ -114,27 +159,21 @@ def extract_text(
     lines = (line.strip() for line in text.splitlines())
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
     text = "\n".join(chunk for chunk in chunks if chunk)
-
-    if num_words is None:
-        return text
     return text[:num_words]
 
 
 def process_in_batches(
-    urls: List[str], window: int = 5, timeout: int = 10
+        urls: List[str], window: int = 5, timeout: int = 10
 ) -> Generator[None, None, List[Tuple[Future, str]]]:
     """Iter URLs in batches."""
     with ThreadPoolExecutor() as executor:
         for i in range(0, len(urls), window):
-            batch = urls[i : i + window]
-            futures = [
-                (executor.submit(requests.get, url, timeout=timeout), url)
-                for url in batch
-            ]
+            batch = urls[i: i + window]
+            futures = [(executor.submit(requests.get, url, timeout=timeout), url) for url in batch]
             yield futures
 
 
-def extract_texts(urls: List[str], num_words: Optional[int]) -> List[str]:
+def extract_texts(urls: List[str], num_words: int = 300) -> List[str]:
     """Extract texts from URLs"""
     max_allowed = 5
     extracted_texts = []
@@ -146,9 +185,7 @@ def extract_texts(urls: List[str], num_words: Optional[int]) -> List[str]:
                 result = future.result()
                 if result.status_code != 200:
                     continue
-                extracted_texts.append(
-                    extract_text(html=result.text, num_words=num_words)
-                )
+                extracted_texts.append(extract_text(html=result.text, num_words=num_words))
                 count += 1
                 if count >= max_allowed:
                     stop = True
@@ -174,82 +211,62 @@ def fetch_additional_information(
     return "\n".join(["- " + text for text in texts])
 
 
-def load_model(vocab: str) -> Language:
-    """Utilize spaCy to load the model and download it if it is not already available."""
-    try:
-        return spacy.load(vocab)
-    except OSError:
-        print("Downloading language model...")
-        download(vocab)
-        return spacy.load(vocab)
+def get_sme_role(engine, temperature, max_tokens, prompt) -> Tuple[str, str]:
+    """Get SME title and introduction"""
+    market_question = SME_GENERATION_MARKET_PROMPT.format(question=prompt)
+    system_prompt = SME_GENERATION_SYSTEM_PROMPT
 
-
-def calc_word_frequencies(doc: Doc) -> FrequenciesType:
-    """Get the frequency of each word in the given text, excluding stop words and punctuations."""
-    word_frequencies = defaultdict(lambda: 0)
-    for token in doc:
-        word = token.text
-        lower = word.lower()
-        if lower not in STOP_WORDS.union(punctuation):
-            word_frequencies[lower] += 1
-
-    max_frequency = max(word_frequencies.values())
-    normalized_frequencies = defaultdict(
-        lambda: 0,
-        {
-            word: frequency / max_frequency
-            for word, frequency in word_frequencies.items()
-        },
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": market_question},
+    ]
+    response = openai.ChatCompletion.create(
+        model=engine,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        n=1,
+        timeout=150,
+        request_timeout=150,
+        stop=None,
     )
-    return normalized_frequencies
+    generated_sme_roles = response.choices[0].message.content
+    sme = json.loads(generated_sme_roles)[0]
+    return sme["sme"], sme["sme_introduction"]
 
 
-def calc_sentence_scores(
-    sentence_tokens: List[Span], word_frequencies: FrequenciesType
-) -> ScoresType:
-    """Calculate the sentence scores."""
-    sentence_scores = defaultdict(lambda: 0)
-    for sentence in sentence_tokens:
-        for token in sentence:
-            sentence_scores[sentence] += word_frequencies[token.text.lower()]
-
-    return sentence_scores
-
-
-def summarize(text: str, compression_factor: float, vocab: str) -> str:
-    """Summarize the given text, retaining the given compression factor."""
-    if not text:
-        raise ValueError("Cannot summarize empty text!")
-
-    nlp = load_model(vocab)
-    doc = nlp(text)
-    word_frequencies = calc_word_frequencies(doc)
-    sentence_tokens = list(doc.sents)
-    sentence_scores = calc_sentence_scores(sentence_tokens, word_frequencies)
-    n = int(len(sentence_tokens) * compression_factor)
-    summary = nlargest(n, sentence_scores, key=sentence_scores.get)
-    summary_words = [word.text for word in summary]
-    summary_text = "".join(summary_words)
-    return summary_text
-
-
-def run(**kwargs) -> Tuple[str, Optional[Dict[str, Any]]]:
+def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     """Run the task"""
     tool = kwargs["tool"]
     prompt = kwargs["prompt"]
-    source_links = kwargs["source_links"]
     max_tokens = kwargs.get("max_tokens", DEFAULT_OPENAI_SETTINGS["max_tokens"])
     temperature = kwargs.get("temperature", DEFAULT_OPENAI_SETTINGS["temperature"])
-    num_urls = kwargs.get("num_urls", DEFAULT_NUM_URLS[tool])
-    num_words = kwargs.get("num_words", DEFAULT_NUM_WORDS[tool])
-    compression_factor = kwargs.get("compression_factor", DEFAULT_COMPRESSION_FACTOR)
-    vocab = kwargs.get("vocab", DEFAULT_VOCAB)
+
+    # ADDED FOR BENCHMARK
+    source_links = kwargs.get("source_links", [])
+    num_urls = kwargs.get("num_urls", NUM_URLS_EXTRACT)
+    num_words = kwargs.get("num_words", DEFAULT_NUM_WORDS)
 
     openai.api_key = kwargs["api_keys"]["openai"]
     if tool not in ALLOWED_TOOLS:
         raise ValueError(f"Tool {tool} is not supported.")
 
     engine = TOOL_TO_ENGINE[tool]
+
+    try:
+        sme, sme_introduction = get_sme_role(
+            engine,
+            temperature,
+            max_tokens,
+            prompt,
+        )
+        print(f"SME: {sme}")
+        print(f"SME introduction: {sme_introduction}")
+    except Exception as e:
+        print(f"An error occurred during SME role creation: {e}")
+        print("Using default SME introduction.")
+        sme_introduction = "You are a helpful assistant."
+
     additional_information = (
         fetch_additional_information(
             source_links,
@@ -259,20 +276,15 @@ def run(**kwargs) -> Tuple[str, Optional[Dict[str, Any]]]:
         if tool.startswith("prediction-online")
         else ""
     )
-    print('Additional information: ', additional_information)
-    if additional_information and tool == "prediction-online-summarized-info":
-        additional_information = summarize(
-            additional_information, compression_factor, vocab
-        )
-
+    print(f"Additional information: {additional_information}")
     prediction_prompt = PREDICTION_PROMPT.format(
         user_prompt=prompt, additional_information=additional_information
     )
     moderation_result = openai.Moderation.create(prediction_prompt)
     if moderation_result["results"][0]["flagged"]:
-        return "Moderation flagged the prompt as in violation of terms.", None, None
+        return "Moderation flagged the prompt as in violation of terms.", prediction_prompt, None
     messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "system", "content": sme_introduction},
         {"role": "user", "content": prediction_prompt},
     ]
     response = openai.ChatCompletion.create(

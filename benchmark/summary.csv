@@ -1,0 +1,6 @@
+tool,accuracy,num_correct,num_total
+prediction-online,0.25,1,4
+prediction-offline,0.3333333333333333,1,3
+prediction-online-summarized-info,0.0,0,2
+prediction-offline-sme,0.25,1,4
+prediction-online-sme,0.25,1,4
