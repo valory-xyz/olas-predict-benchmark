@@ -63,29 +63,41 @@ class TokenCounterCallback:
         if model not in list(TokenCounterCallback.TOKEN_PRICES.keys()):
             raise ValueError(f"Model {model} not supported.")
         try:
-            if "claude" in model:
-                input_prompt = kwargs["input_prompt"]
-                output_prompt = kwargs["output_prompt"]
-                self.input_tokens = self.TokenCounter.count_tokens(input_prompt, model)
-                self.output_tokens = self.TokenCounter.count_tokens(
-                    output_prompt, model
+            # Check if it its input_prompt or input_tokens
+            if "input_prompt" in kwargs:
+                input_tokens = TokenCounterCallback.TokenCounter.count_tokens(
+                    kwargs["input_prompt"], model
                 )
-                self.total_tokens = self.input_tokens + self.output_tokens
-                self.input_cost = self.token_to_cost(self.input_tokens, model, "input")
-                self.output_cost = self.token_to_cost(
-                    self.output_tokens, model, "output"
-                )
-                self.total_cost = self.input_cost + self.output_cost
-
+                input_cost = self.token_to_cost(input_tokens, model, "input")
+                self.input_tokens += input_tokens
+                self.input_cost += input_cost
+            elif "input_tokens" in kwargs:
+                input_tokens = kwargs["input_tokens"]
+                input_cost = self.token_to_cost(input_tokens, model, "input")
+                self.input_tokens += input_tokens
+                self.input_cost += input_cost
             else:
-                self.input_tokens += kwargs["input_tokens"]
-                self.output_tokens += kwargs["output_tokens"]
-                self.total_tokens += kwargs["total_tokens"]
-                self.input_cost = self.token_to_cost(self.input_tokens, model, "input")
-                self.output_cost = self.token_to_cost(
-                    self.output_tokens, model, "output"
+                logging.warning("No input_tokens or input_prompt found.")
+
+            # Check if it its output_tokens or output
+            if "output_prompt" in kwargs:
+                output_tokens = TokenCounterCallback.TokenCounter.count_tokens(
+                    kwargs["output_prompt"], model
                 )
-                self.total_cost = self.input_cost + self.output_cost
+                output_cost = self.token_to_cost(output_tokens, model, "output")
+                self.output_tokens += output_tokens
+                self.output_cost += output_cost
+
+            elif "output_tokens" in kwargs:
+                output_tokens = kwargs["output_tokens"]
+                output_cost = self.token_to_cost(output_tokens, model, "output")
+                self.output_tokens += output_tokens
+                self.output_cost += output_cost
+            else:
+                logging.warning("No output_tokens or output found.")
+
+            self.total_tokens = self.input_tokens + self.output_tokens
+            self.total_cost = self.input_cost + self.output_cost
 
         except Exception as e:
             logging.error(f"Error in TokenCounterCallback: {e}")
