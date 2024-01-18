@@ -1,8 +1,0 @@
-tool,accuracy,correct,total,input_tokens_mean,output_tokens_mean,total_tokens_mean,input_cost_mean,output_cost_mean,total_cost_mean
-claude-prediction-offline,0.0,0,2,737.5,40.0,777.5,0.0059,0.00096,0.00686
-claude-prediction-online,0.0,0,2,772.5,39.0,811.5,0.00618,0.000936,0.007116
-prediction-offline,0.0,0,2,538.5,40.0,578.5,0.0005385,8e-05,0.0006185
-prediction-offline-sme,0.0,0,2,1026.5,109.5,1136.0,0.0010265,0.000219,0.0012455
-prediction-online,0.0,0,2,572.0,42.0,614.0,0.000572,8.400000000000001e-05,0.000656
-prediction-online-sme,0.5,1,2,1066.0,115.0,1181.0,0.001066,0.00023,0.001296
-prediction-online-summarized-info,0.0,0,2,538.5,42.0,580.5,0.0005385,8.400000000000001e-05,0.0006225

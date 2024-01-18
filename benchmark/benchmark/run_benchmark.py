@@ -5,9 +5,11 @@ from dotenv import load_dotenv
 import json
 import os
 import pandas as pd
+from pathlib import Path
 from prediction_request import prediction_request
 from prediction_request_sme import prediction_request_sme
 from prediction_request_claude import prediction_request_claude
+import time
 from tqdm import tqdm
 from utils import get_logger, TokenCounterCallback
 
@@ -36,6 +38,7 @@ def run_benchmark(kwargs):
     """Start the benchmark tests. If a category flag is provided, run the categories with that mark."""
 
     logger.info("Running benchmark tests...")
+    start_time = time.time()
 
     test_questions = json.load(open("./data/autocast/autocast_questions.json"))
 
@@ -54,7 +57,14 @@ def run_benchmark(kwargs):
 
     logger.info(f"Running {num_questions} questions for each tool: {tools}")
 
-    with open("results.csv", mode="a", newline="") as file:
+    results_path = Path("results")
+    if not results_path.exists():
+        results_path.mkdir(exist_ok=True)
+
+    time_string = time.strftime("%y%m%d%H%M%S", time.localtime(start_time))
+    csv_file_path = results_path / f"results_{time_string}.csv"
+
+    with open(csv_file_path, mode="a", newline="") as file:
         fieldnames = [
             "prompt",
             "answer",
@@ -71,7 +81,6 @@ def run_benchmark(kwargs):
             "total_cost",
         ]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
-        csv_file_path = "results.csv"
 
         if file.tell() == 0:
             writer.writeheader()
@@ -145,7 +154,11 @@ def run_benchmark(kwargs):
 
     logger.info("Benchmark tests complete.")
     logger.info(f"Results:\n\n {results_df}")
-    summary_df.to_csv("summary.csv", index=False)
+    summary_df.to_csv(results_path / f"summary_{time_string}.csv", index=False)
+
+    end_time = time.time()
+    total_time = end_time - start_time
+    logger.info(f"Total Time: {total_time} seconds")
 
 
 if __name__ == "__main__":
