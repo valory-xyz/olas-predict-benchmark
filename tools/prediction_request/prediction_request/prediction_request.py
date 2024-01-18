@@ -243,6 +243,7 @@ def run(**kwargs) -> Tuple[str, Optional[Dict[str, Any]]]:
     num_words = kwargs.get("num_words", DEFAULT_NUM_WORDS[tool])
     compression_factor = kwargs.get("compression_factor", DEFAULT_COMPRESSION_FACTOR)
     vocab = kwargs.get("vocab", DEFAULT_VOCAB)
+    counter_callback = kwargs.get("counter_callback", None)
 
     openai.api_key = kwargs["api_keys"]["openai"]
     if tool not in ALLOWED_TOOLS:
@@ -283,4 +284,13 @@ def run(**kwargs) -> Tuple[str, Optional[Dict[str, Any]]]:
         request_timeout=150,
         stop=None,
     )
+    if counter_callback is not None:
+        counter_callback(
+            input_tokens=response['usage']['prompt_tokens'],
+            output_tokens=response['usage']['completion_tokens'],
+            total_tokens=response['usage']['total_tokens'],
+            model=engine,
+        )
+        return response.choices[0].message.content, prediction_prompt, counter_callback
+    
     return response.choices[0].message.content, prediction_prompt, None

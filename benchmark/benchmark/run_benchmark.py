@@ -9,7 +9,7 @@ from prediction_request import prediction_request
 from prediction_request_sme import prediction_request_sme
 from prediction_request_claude import prediction_request_claude
 from tqdm import tqdm
-from utils import get_logger
+from utils import get_logger, TokenCounterCallback
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -63,6 +63,12 @@ def run_benchmark(kwargs):
             "p_no",
             "prediction",
             "Correct",
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "input_cost",
+            "output_cost",
+            "total_cost",
         ]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         csv_file_path = "results.csv"
@@ -79,6 +85,7 @@ def run_benchmark(kwargs):
                     "source_links": test_question["source_links"],
                     "answer": test_question["answer"],
                     "tool": t,
+                    "counter_callback": TokenCounterCallback(),
                 }
 
                 try:
@@ -87,6 +94,13 @@ def run_benchmark(kwargs):
                     result = json.loads(response[0])
                     test_q["p_yes"] = float(result["p_yes"])
                     test_q["p_no"] = float(result["p_no"])
+                    if response[2] is not None:
+                        test_q["input_tokens"] = response[2].input_tokens
+                        test_q["output_tokens"] = response[2].output_tokens
+                        test_q["total_tokens"] = response[2].total_tokens
+                        test_q["input_cost"] = response[2].input_cost
+                        test_q["output_cost"] = response[2].output_cost
+                        test_q["total_cost"] = response[2].total_cost
                     # test_q["prompt_response"] = response[1].replace(os.linesep, "")
 
                     if float(result["p_yes"]) == float(result["p_no"]):
@@ -99,6 +113,7 @@ def run_benchmark(kwargs):
                     test_q["Correct"] = test_q["prediction"] == test_q["answer"]
 
                     del test_q["source_links"]
+                    del test_q["counter_callback"]
 
                     writer.writerow(test_q)
 
@@ -106,20 +121,27 @@ def run_benchmark(kwargs):
                     logger.error(f"Error running benchmark for tool {t}: {e}")
 
     results_df = pd.read_csv(csv_file_path)
-    tool_df = results_df[results_df["tool"] == t]
-    accuracy = tool_df["Correct"].mean()
-    num_correct = tool_df["Correct"].sum()
-    num_total = tool_df["Correct"].count()
-
-    summary_df = pd.DataFrame(
+    grouped_df = results_df.groupby("tool").agg(
         {
-            "tool": [t],
-            "accuracy": [accuracy],
-            "num_correct": [num_correct],
-            "num_total": [num_total],
+            "Correct": ["mean", "sum", "count"],
+            "input_tokens": ["mean"],
+            "output_tokens": ["mean"],
+            "total_tokens": ["mean"],
+            "input_cost": ["mean"],
+            "output_cost": ["mean"],
+            "total_cost": ["mean"],
         }
     )
-    logger.info(f"Tool {t} accuracy: {accuracy}")
+
+    grouped_df.columns = ["_".join(col).strip() for col in grouped_df.columns.values]
+
+    summary_df = grouped_df.reset_index().rename(
+        columns={
+            "Correct_mean": "accuracy",
+            "Correct_sum": "correct",
+            "Correct_count": "total",
+        }
+    )
 
     logger.info("Benchmark tests complete.")
     logger.info(f"Results:\n\n {results_df}")

@@ -210,7 +210,7 @@ def fetch_additional_information(
     return "\n".join(["- " + text for text in texts])
 
 
-def get_sme_role(engine, temperature, max_tokens, prompt) -> Tuple[str, str]:
+def get_sme_role(engine, temperature, max_tokens, prompt, counter_callback=None) -> Tuple[str, str]:
     """Get SME title and introduction"""
     market_question = SME_GENERATION_MARKET_PROMPT.format(question=prompt)
     system_prompt = SME_GENERATION_SYSTEM_PROMPT
@@ -231,7 +231,17 @@ def get_sme_role(engine, temperature, max_tokens, prompt) -> Tuple[str, str]:
     )
     generated_sme_roles = response.choices[0].message.content
     sme = json.loads(generated_sme_roles)[0]
-    return sme["sme"], sme["sme_introduction"]
+    if counter_callback is not None:
+        counter_callback(
+            input_tokens=response['usage']['prompt_tokens'],
+            output_tokens=response['usage']['completion_tokens'],
+            total_tokens=response['usage']['total_tokens'],
+            model=engine,
+        )
+
+        return sme["sme"], sme["sme_introduction"], counter_callback
+
+    return sme["sme"], sme["sme_introduction"], None
 
 
 def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
@@ -245,6 +255,7 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     source_links = kwargs.get("source_links", [])
     num_urls = kwargs.get("num_urls", NUM_URLS_EXTRACT)
     num_words = kwargs.get("num_words", DEFAULT_NUM_WORDS)
+    counter_callback = kwargs.get("counter_callback", None)
 
     openai.api_key = kwargs["api_keys"]["openai"]
     if tool not in ALLOWED_TOOLS:
@@ -253,11 +264,12 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     engine = TOOL_TO_ENGINE[tool]
 
     try:
-        sme, sme_introduction = get_sme_role(
+        sme, sme_introduction, counter_callback = get_sme_role(
             engine,
             temperature,
             max_tokens,
             prompt,
+            counter_callback=counter_callback,
         )
     except Exception as e:
         print(f"An error occurred during SME role creation: {e}")
@@ -293,4 +305,14 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
         request_timeout=150,
         stop=None,
     )
+    if counter_callback is not None:
+        counter_callback(
+            input_tokens=response['usage']['prompt_tokens'],
+            output_tokens=response['usage']['completion_tokens'],
+            total_tokens=response['usage']['total_tokens'],
+            model=engine,
+        )
+
+        return response.choices[0].message.content, prediction_prompt, counter_callback
+    
     return response.choices[0].message.content, prediction_prompt, None

@@ -165,7 +165,7 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     source_links = kwargs["source_links"]
     num_urls = kwargs.get("num_urls", DEFAULT_NUM_URLS[tool])
     num_words = kwargs.get("num_words", DEFAULT_NUM_WORDS[tool])
- 
+    counter_callback = kwargs.get("counter_callback", None)
 
     anthropic = Anthropic(api_key=kwargs["api_keys"]["anthropic"])
 
@@ -193,4 +193,12 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
         prompt=prediction_prompt,
         stop_sequences=STOP_SEQUENCES,
     )
+    if counter_callback is not None:
+        counter_callback(
+            model=engine,
+            input_prompt=prediction_prompt,
+            output_prompt=completion.completion,
+        )
+        return completion.completion, prediction_prompt, counter_callback
+    
     return completion.completion, prediction_prompt, None
