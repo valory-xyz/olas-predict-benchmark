@@ -1,2 +1,0 @@
-tool,accuracy,correct,total,input_tokens_mean,output_tokens_mean,total_tokens_mean,input_cost_mean,output_cost_mean,total_cost_mean
-prediction-online,0.0,0,2,572.0,39.0,611.0,0.000572,7.8e-05,0.00065
