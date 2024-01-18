@@ -4,6 +4,7 @@ import csv
 from dotenv import load_dotenv
 import json
 import os
+import openai
 import pandas as pd
 from pathlib import Path
 from prediction_request import prediction_request
@@ -129,9 +130,10 @@ def run_benchmark(kwargs):
                         del test_q["counter_callback"]
 
                         writer.writerow(test_q)
+
                         break
 
-                    except Exception as e:
+                    except openai.error.OpenAIError as e:
                         logger.error(f"Error running benchmark for tool {t}: {e}")
                         CURRENT_RETRIES += 1
                         if CURRENT_RETRIES > MAX_RETRIES:
@@ -143,6 +145,10 @@ def run_benchmark(kwargs):
                             logger.info(
                                 f"Retrying tool {t} for question {test_q['prompt']}"
                             )
+
+                    except Exception as e:
+                        logger.error(f"Error running benchmark for tool {t}: {e}")
+                        break
 
     results_df = pd.read_csv(csv_file_path)
     grouped_df = results_df.groupby("tool").agg(
