@@ -44,6 +44,7 @@ def run_benchmark(kwargs):
 
     tools = kwargs.pop("tools")
     num_questions = kwargs.pop("num_questions", len(test_questions))
+    MAX_RETRIES = kwargs.pop("max_retries", 3)
 
     # Prepare the questions
     questions = []
@@ -97,37 +98,51 @@ def run_benchmark(kwargs):
                     "counter_callback": TokenCounterCallback(),
                 }
 
-                try:
-                    tool = tool_map(t)
-                    response = tool.run(**{**test_q, **kwargs})
-                    result = json.loads(response[0])
-                    test_q["p_yes"] = float(result["p_yes"])
-                    test_q["p_no"] = float(result["p_no"])
-                    if response[2] is not None:
-                        test_q["input_tokens"] = response[2].input_tokens
-                        test_q["output_tokens"] = response[2].output_tokens
-                        test_q["total_tokens"] = response[2].total_tokens
-                        test_q["input_cost"] = response[2].input_cost
-                        test_q["output_cost"] = response[2].output_cost
-                        test_q["total_cost"] = response[2].total_cost
-                    # test_q["prompt_response"] = response[1].replace(os.linesep, "")
+                CURRENT_RETRIES = 0
 
-                    if float(result["p_yes"]) == float(result["p_no"]):
-                        test_q["prediction"] = "undecided"
-                    else:
-                        test_q["prediction"] = (
-                            "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
-                        )
+                while True:
+                    try:
+                        tool = tool_map(t)
+                        response = tool.run(**{**test_q, **kwargs})
+                        result = json.loads(response[0])
+                        test_q["p_yes"] = float(result["p_yes"])
+                        test_q["p_no"] = float(result["p_no"])
+                        if response[2] is not None:
+                            test_q["input_tokens"] = response[2].input_tokens
+                            test_q["output_tokens"] = response[2].output_tokens
+                            test_q["total_tokens"] = response[2].total_tokens
+                            test_q["input_cost"] = response[2].input_cost
+                            test_q["output_cost"] = response[2].output_cost
+                            test_q["total_cost"] = response[2].total_cost
+                        # test_q["prompt_response"] = response[1].replace(os.linesep, "")
 
-                    test_q["Correct"] = test_q["prediction"] == test_q["answer"]
+                        if float(result["p_yes"]) == float(result["p_no"]):
+                            test_q["prediction"] = "undecided"
+                        else:
+                            test_q["prediction"] = (
+                                "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
+                            )
 
-                    del test_q["source_links"]
-                    del test_q["counter_callback"]
+                        test_q["Correct"] = test_q["prediction"] == test_q["answer"]
 
-                    writer.writerow(test_q)
+                        del test_q["source_links"]
+                        del test_q["counter_callback"]
 
-                except Exception as e:
-                    logger.error(f"Error running benchmark for tool {t}: {e}")
+                        writer.writerow(test_q)
+                        break
+
+                    except Exception as e:
+                        logger.error(f"Error running benchmark for tool {t}: {e}")
+                        CURRENT_RETRIES += 1
+                        if CURRENT_RETRIES > MAX_RETRIES:
+                            logger.error(
+                                f"Max retries reached for tool {t}. Skipping question."
+                            )
+                            break
+                        else:
+                            logger.info(
+                                f"Retrying tool {t} for question {test_q['prompt']}"
+                            )
 
     results_df = pd.read_csv(csv_file_path)
     grouped_df = results_df.groupby("tool").agg(
