@@ -162,9 +162,9 @@ OUTPUT_FORMAT
 """
 
 
-def extract_texts(urls: List[str], num_words: Optional[int]) -> List[str]:
+def extract_texts(urls: List[str], num_urls: Optional[int], num_words: Optional[int]) -> List[str]:
     """Extract texts from URLs"""
-    max_allowed = 5
+    max_allowed = num_urls
     extracted_texts = []
     count = 0
     stop = False
@@ -201,8 +201,7 @@ def fetch_additional_information(
     """Fetch additional information."""
     url_query_prompt = URL_QUERY_PROMPT.format(user_prompt=prompt)
 
-    urls = source_links[:num_urls]
-    texts = extract_texts(urls, num_words)
+    texts = extract_texts(source_links, num_urls, num_words)
     if counter_callback is not None:
         counter_callback(
             input_prompt=url_query_prompt,
