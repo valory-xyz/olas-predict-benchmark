@@ -184,7 +184,7 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 2
+    # kwargs["num_questions"] = 4
     kwargs["tools"] = [
         "prediction-online",
         "prediction-offline",
@@ -197,6 +197,7 @@ if __name__ == "__main__":
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
     kwargs["api_keys"]["anthropic"] = os.getenv("ANTHROPIC_API_KEY")
-    kwargs["num_urls"] = 2
+    kwargs["num_urls"] = 3
+    kwargs["num_words"] = 300
 
     run_benchmark(kwargs)
