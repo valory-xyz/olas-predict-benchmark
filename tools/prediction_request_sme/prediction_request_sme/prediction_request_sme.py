@@ -21,7 +21,7 @@
 
 import json
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Callable
 
 import openai
 import requests
@@ -200,14 +200,29 @@ def extract_texts(urls: List[str], num_words: int = 300) -> List[str]:
 
 
 def fetch_additional_information(
+    prompt: str,
+    engine: str,
     source_links: List[str],
     num_urls: int,
     num_words: Optional[int],
+    counter_callback: Optional[Callable] = None,
 ) -> str:
     """Fetch additional information."""
+    prediction_prompt = URL_QUERY_PROMPT.format(user_prompt=prompt)
+
     urls = source_links[:num_urls]
     texts = extract_texts(urls, num_words)
-    return "\n".join(["- " + text for text in texts])
+
+    if counter_callback is not None:
+        counter_callback(
+            input_prompt=prediction_prompt,
+            output_tokens=40,
+            model=engine,
+        )
+
+        return "\n".join(["- " + text for text in texts]), counter_callback
+
+    return "\n".join(["- " + text for text in texts]), None
 
 
 def get_sme_role(engine, temperature, max_tokens, prompt, counter_callback=None) -> Tuple[str, str]:
@@ -276,15 +291,18 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
         print("Using default SME introduction.")
         sme_introduction = "You are a helpful assistant."
 
-    additional_information = (
-        fetch_additional_information(
+    if tool.startswith("prediction-online"):
+        additional_information, counter_callback = fetch_additional_information(
+            prompt,
+            engine,
             source_links,
             num_urls,
             num_words,
+            counter_callback=counter_callback,
         )
-        if tool.startswith("prediction-online")
-        else ""
-    )
+    else:
+        additional_information = None
+
     prediction_prompt = PREDICTION_PROMPT.format(
         user_prompt=prompt, additional_information=additional_information
     )

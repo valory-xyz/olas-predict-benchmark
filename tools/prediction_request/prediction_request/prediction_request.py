@@ -23,7 +23,7 @@ from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
 from heapq import nlargest
 from string import punctuation
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Callable
 
 import openai
 import requests
@@ -134,6 +134,34 @@ def process_in_batches(
             yield futures
 
 
+URL_QUERY_PROMPT = """
+You are an LLM inside a multi-agent system that takes in a prompt of a user requesting a probability estimation
+for a given event. You are provided with an input under the label "USER_PROMPT". You must follow the instructions
+under the label "INSTRUCTIONS". You must provide your response in the format specified under "OUTPUT_FORMAT".
+
+INSTRUCTIONS
+* Read the input under the label "USER_PROMPT" delimited by three backticks.
+* The "USER_PROMPT" specifies an event.
+* The event will only have two possible outcomes: either the event will happen or the event will not happen.
+* If the event has more than two possible outcomes, you must ignore the rest of the instructions and output the response "Error".
+* You must provide your response in the format specified under "OUTPUT_FORMAT".
+* Do not include any other contents in your response.
+
+USER_PROMPT:
+```
+{user_prompt}
+```
+
+OUTPUT_FORMAT
+* Your output response must be only a single JSON object to be parsed by Python's "json.loads()".
+* The JSON must contain two fields: "queries", and "urls".
+   - "queries": An array of strings of size between 1 and 5. Each string must be a search engine query that can help obtain relevant information to estimate
+     the probability that the event in "USER_PROMPT" occurs. You must provide original information in each query, and they should not overlap
+     or lead to obtain the same set of results.
+* Output only the JSON object. Do not include any other contents in your response.
+"""
+
+
 def extract_texts(urls: List[str], num_words: Optional[int]) -> List[str]:
     """Extract texts from URLs"""
     max_allowed = 5
@@ -163,14 +191,26 @@ def extract_texts(urls: List[str], num_words: Optional[int]) -> List[str]:
 
 
 def fetch_additional_information(
+    prompt: str,
+    engine: str,
     source_links: List[str],
     num_urls: int,
     num_words: Optional[int],
+    counter_callback: Optional[Callable] = None,
 ) -> str:
     """Fetch additional information."""
+    url_query_prompt = URL_QUERY_PROMPT.format(user_prompt=prompt)
+
     urls = source_links[:num_urls]
     texts = extract_texts(urls, num_words)
-    return "\n".join(["- " + text for text in texts])
+    if counter_callback is not None:
+        counter_callback(
+            input_prompt=url_query_prompt,
+            output_tokens=40,
+            model=engine,
+        )
+        return "\n".join(["- " + text for text in texts]), counter_callback
+    return "\n".join(["- " + text for text in texts]), None
 
 
 def load_model(vocab: str) -> Language:
@@ -250,15 +290,19 @@ def run(**kwargs) -> Tuple[str, Optional[Dict[str, Any]]]:
         raise ValueError(f"Tool {tool} is not supported.")
 
     engine = TOOL_TO_ENGINE[tool]
-    additional_information = (
-        fetch_additional_information(
-            source_links,
-            num_urls,
-            num_words,
-        )
-        if tool.startswith("prediction-online")
-        else ""
-    )
+
+    if tool.startswith("prediction-online"):
+        additional_information, counter_callback = fetch_additional_information(
+            prompt=prompt,
+            engine=engine,
+            source_links=source_links,
+            num_urls=num_urls,
+            num_words=num_words,
+            counter_callback=counter_callback,
+            )
+    else:
+        additional_information = None
+
     if additional_information and tool == "prediction-online-summarized-info":
         additional_information = summarize(
             additional_information, compression_factor, vocab
@@ -288,7 +332,6 @@ def run(**kwargs) -> Tuple[str, Optional[Dict[str, Any]]]:
         counter_callback(
             input_tokens=response['usage']['prompt_tokens'],
             output_tokens=response['usage']['completion_tokens'],
-            total_tokens=response['usage']['total_tokens'],
             model=engine,
         )
         return response.choices[0].message.content, prediction_prompt, counter_callback

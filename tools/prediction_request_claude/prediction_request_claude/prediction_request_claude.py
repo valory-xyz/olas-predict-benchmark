@@ -20,11 +20,11 @@
 """This module implements a Mech tool for binary predictions."""
 
 from collections import defaultdict
-import json
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Any, Dict, List, Optional, Tuple, Iterator
+from typing import Any, Dict, List, Optional, Tuple, Iterator, Callable
 
 import requests
+
 from anthropic import Anthropic, HUMAN_PROMPT, AI_PROMPT
 from bs4 import BeautifulSoup
 
@@ -87,6 +87,39 @@ OUTPUT_FORMAT
 * This is correct:"{{\n  \"p_yes\": 0.2,\n  \"p_no\": 0.8,\n  \"confidence\": 0.7,\n  \"info_utility\": 0.5\n}}"
 """
 
+
+URL_QUERY_PROMPT = """
+You are an LLM inside a multi-agent system that takes in a prompt of a user requesting a probability estimation
+for a given event. You are provided with an input under the label "USER_PROMPT". You must follow the instructions
+under the label "INSTRUCTIONS". You must provide your response in the format specified under "OUTPUT_FORMAT".
+
+INSTRUCTIONS
+* Read the input under the label "USER_PROMPT" delimited by three backticks.
+* The "USER_PROMPT" specifies an event.
+* The event will only have two possible outcomes: either the event will happen or the event will not happen.
+* If the event has more than two possible outcomes, you must ignore the rest of the instructions and output the response "Error".
+* You must provide your response in the format specified under "OUTPUT_FORMAT".
+* Do not include any other contents in your response.
+
+USER_PROMPT:
+```
+{user_prompt}
+```
+
+OUTPUT_FORMAT
+* Your output response must be only a single JSON object to be parsed by Python's "json.loads()".
+* The JSON must contain two fields: "queries", and "urls".
+   - "queries": An array of strings of size between 1 and 5. Each string must be a search engine query that can help obtain relevant information to estimate
+     the probability that the event in "USER_PROMPT" occurs. You must provide original information in each query, and they should not overlap
+     or lead to obtain the same set of results.
+* Output only the JSON object to be parsed by Python's "json.loads()". Do not include any other contents in your response.
+* Never use Markdown syntax highlighting, such as ```json```. Only output the raw json string.
+* This is incorrect:"```json{{\n  \"queries\": [\"term1\", \"term2\"]}}```"
+* This is incorrect:```json"{{\n  \"queries\": [\"term1\", \"term2\"]}}"```
+* This is correct:"{{\n  \"quries\": [\"term1\", \"term2\"]}}"
+"""
+
+
 ASSISTANT_TEXT = "```json"
 STOP_SEQUENCES = ["```"]
 
@@ -148,14 +181,28 @@ def extract_texts(urls: List[str], num_words: int = 300) -> List[str]:
 
 
 def fetch_additional_information(
+    prompt: str,
+    engine: str,
     source_links: List[str],
     num_urls: int,
-    num_words: Optional[int],
+    counter_callback: Optional[Callable] = None,
 ) -> str:
     """Fetch additional information."""
+    url_query_prompt = URL_QUERY_PROMPT.format(user_prompt=prompt)
+    url_query_prompt = f"{HUMAN_PROMPT}{url_query_prompt}{AI_PROMPT}{ASSISTANT_TEXT}"
+
     urls = source_links[:num_urls]
     texts = extract_texts(urls)
-    return "\n".join(["- " + text for text in texts])
+
+    if counter_callback is not None:
+        counter_callback(
+            model=engine,
+            input_prompt=url_query_prompt,
+            output_tokens=40,
+        )
+        return "\n".join(["- " + text for text in texts]), counter_callback
+
+    return "\n".join(["- " + text for text in texts]), None
 
 
 def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
@@ -164,7 +211,6 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
     prompt = kwargs["prompt"]
     source_links = kwargs["source_links"]
     num_urls = kwargs.get("num_urls", DEFAULT_NUM_URLS[tool])
-    num_words = kwargs.get("num_words", DEFAULT_NUM_WORDS[tool])
     counter_callback = kwargs.get("counter_callback", None)
 
     anthropic = Anthropic(api_key=kwargs["api_keys"]["anthropic"])
@@ -173,15 +219,18 @@ def run(**kwargs) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
         raise ValueError(f"Tool {tool} is not supported.")
 
     engine = TOOL_TO_ENGINE[tool]
-    additional_information = (
-        fetch_additional_information(
-            source_links,
-            num_urls,
-            num_words,
+
+    if tool == "claude-prediction-online":
+        additional_information, counter_callback = fetch_additional_information(
+            prompt=prompt,
+            engine=engine,
+            source_links=source_links,
+            num_urls=num_urls,
+            counter_callback=counter_callback,
         )
-        if tool == "claude-prediction-online"
-        else ""
-    )
+    else:
+        additional_information = None
+
     prediction_prompt = PREDICTION_PROMPT.format(
         user_prompt=prompt, additional_information=additional_information
     )
