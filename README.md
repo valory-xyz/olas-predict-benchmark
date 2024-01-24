@@ -32,7 +32,7 @@ poetry run benchmark/run_benchmark.py
 ```
 
 ## Notebook for Refining Autocast Dataset for Mech Benchmarking
-Please see `./nbs.refined_autocast_dataset.ipynb` for details.
+Please see `./nbs/refined_autocast_dataset.ipynb` for details.
 
 ### Purpose
 - This notebook is designed to refine the autocast dataset for mech benchmarking use cases.
@@ -52,3 +52,5 @@ Please see `./nbs.refined_autocast_dataset.ipynb` for details.
 - There are two important files:
     - `olas_benchmark.json` - a JSON subset of the initial autocast dataset.
     - `olas_docs.pkl` - a pickle file mapping URLs to the retrieved documents.
+    - `retrieved_docs.pkl` - this contains all texts that was retrieved.
+- To download the dateset, please follow instructions on `./nbs/0. download_dataset`
