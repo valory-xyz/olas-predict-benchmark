@@ -30,3 +30,25 @@ poetry shell
 ```console
 poetry run benchmark/run_benchmark.py
 ```
+
+## Notebook for Refining Autocast Dataset for Mech Benchmarking
+Please see `./nbs.refined_autocast_dataset.ipynb` for details.
+
+### Purpose
+- This notebook is designed to refine the autocast dataset for mech benchmarking use cases.
+- The need for refinement arises due to issues like dead URLs, paywalls, etc.
+- The refinement process filters out and retains only "working" URLs.
+
+### Filtering Criteria
+- URLs returning non-200 HTTP status codes are filtered out.
+- URLs containing certain keywords identified during manual checking are excluded.
+- Links with less than 1000 words are removed.
+
+### Dataset Specifications
+- The final refined dataset will contain a minimum of 5 and a maximum of 20 source links.
+
+### Storage
+- The refined dataset is hosted on [HuggingFace](https://huggingface.co/datasets/valory/autocast/tree/main).
+- There are two important files:
+    - `olas_benchmark.json` - a JSON subset of the initial autocast dataset.
+    - `olas_docs.pkl` - a pickle file mapping URLs to the retrieved documents.
