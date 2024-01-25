@@ -33,7 +33,6 @@ poetry shell
 
 # run benchmark
 poetry run benchmark/run_benchmark.py
-
 ```
 
 ## Dataset
@@ -46,8 +45,8 @@ The refined dataset files are:
 - `retrieved_docs.pkl` - this contains all texts that were scraped.
 
 The following notebooks are also available:
-- `./nbs/0. download_dataset` - download and explore the refined dataset from HuggingFace 
-- `./nbs/refined_autocast_dataset.ipynb` - details the refining procedure of the Autocast dataset for mech benchmarking
+- `./benchmark/nbs/0. download_dataset` - download and explore the refined dataset from HuggingFace 
+- `./benchmark/nbs/refined_autocast_dataset.ipynb` - details the refining procedure of the Autocast dataset for mech benchmarking
 
 ### Filtering Criteria
 
@@ -65,8 +64,8 @@ Only samples with a minimum of 5 working URLs are retained. The maximum number o
 |---------------------------------|--------------------|---------|-------|-------------------|-----------------|
 | claude-prediction-offline       | 0.75               | 219     | 292   | 779.2979452054794 | 0.00689010958904109   |
 | claude-prediction-online        | 0.32533164876816173| 1030    | 3166  | 900.2602653190145 | 0.007864980416929873  |
-| prediction-offline              | 0.6365914786967418 | 254     | 399   | 580.390977443609  | 0.0006222556390977439 |
-| prediction-offline-sme          | 0.6021276595744681 | 283     | 470   | 1189.7255319148935| 0.0013500234042553034 |
 | prediction-online               | 0.6369426751592356 | 300     | 471   | 1244.4819532908705| 0.0013571125265392657 |
-| prediction-online-sme           | 0.5583864118895966 | 263     | 471   | 1853.4670912951167| 0.002086902335456468  |
+| prediction-offline              | 0.6365914786967418 | 254     | 399   | 580.390977443609  | 0.0006222556390977439 |
 | prediction-online-summarized-info| 0.635             | 254     | 400   | 1008.8325         | 0.0011212074999999995 |
+| prediction-offline-sme          | 0.6021276595744681 | 283     | 470   | 1189.7255319148935| 0.0013500234042553034 |
+| prediction-online-sme           | 0.5583864118895966 | 263     | 471   | 1853.4670912951167| 0.002086902335456468  |
