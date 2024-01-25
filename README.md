@@ -63,7 +63,7 @@ Only samples with a minimum of 5 working URLs are retained. The maximum number o
 | Tool                            | Accuracy           | Correct | Total | Mean Tokens Used  | Mean Cost ($)   |
 |---------------------------------|--------------------|---------|-------|-------------------|-----------------|
 | claude-prediction-offline       | 0.75               | 219     | 292   | 779.2979452054794 | 0.00689010958904109   |
-| claude-prediction-online        | 0.32533164876816173| 1030    | 3166  | 900.2602653190145 | 0.007864980416929873  |
+| claude-prediction-online        | 0.6991643454038997 | 251     | 359   | 1531.7214484679666| 0.013557348189415024  |
 | prediction-online               | 0.6369426751592356 | 300     | 471   | 1244.4819532908705| 0.0013571125265392657 |
 | prediction-offline              | 0.6365914786967418 | 254     | 399   | 580.390977443609  | 0.0006222556390977439 |
 | prediction-online-summarized-info| 0.635             | 254     | 400   | 1008.8325         | 0.0011212074999999995 |
