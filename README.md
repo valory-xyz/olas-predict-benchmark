@@ -1,10 +1,14 @@
 # OLAS Predict Benchmark
 
-## Download the data 
+This repo is for testing the performance of OLAS tools on historical prediction market data, before deploying them in real-time. Find out more about how to install and run the benchmark, and details on the dataset below. 
 
-The latest version of the [Autocast dataset can be downloaded here](https://people.eecs.berkeley.edu/~hendrycks/autocast.tar.gz)
+# Contents
 
-## Install
+- [🏗 Initial Setup](#-initial-setup)
+- [🏛 Dataset](#-dataset)
+- [🤖 Results](#-results)
+
+## Initial Setup
 
 ```console
 git clone https://github.com/valory-xyz/olas-predict-benchmark.git
@@ -13,44 +17,56 @@ cd olas-predict-benchmark
 # create env and add openai api key
 cp .env.sample .env
 
-# link the data
-mkdir data
-cd data
-ln -s ~/path/to/data/autocast .
+# download the benchmark data
+mkdir benchmark/data
+cd benchmark/data
+git lfs install 
+git clone https://huggingface.co/datasets/valory/autocast
 cd ..
 
+# clone the tools repo
+git submodule add https://github.com/valory-xyz/mech.git
+
 # set up env
-cd benchmark
 poetry install
 poetry shell
-```
 
-## Run 
-
-```console
+# run benchmark
 poetry run benchmark/run_benchmark.py
+
 ```
 
-## Notebook for Refining Autocast Dataset for Mech Benchmarking
-Please see `./nbs/refined_autocast_dataset.ipynb` for details.
+## Dataset
 
-### Purpose
-- This notebook is designed to refine the autocast dataset for mech benchmarking use cases.
-- The need for refinement arises due to issues like dead URLs, paywalls, etc.
-- The refinement process filters out and retains only "working" URLs.
+We start with the Autocast [dataset](https://huggingface.co/datasets/valory/autocast) from the paper "[Forecasting Future World Events with Neural Networks](http://arxiv.org/abs/2206.15474)", and refine it further for the purpose of testing the performance of OLAS mech prediction tools. The original and refined dataset is stored on [HuggingFace](https://huggingface.co/datasets/valory/autocast). 
+
+The refined dataset files are:
+- `autocast_questions_filtered.json` - a JSON subset of the initial autocast dataset.
+- `autocast_questions_filtered.pkl` - a pickle file mapping URLs to the scraped documents of the filtered dataset.
+- `retrieved_docs.pkl` - this contains all texts that were scraped.
+
+The following notebooks are also available:
+- `./nbs/0. download_dataset` - download and explore the refined dataset from HuggingFace 
+- `./nbs/refined_autocast_dataset.ipynb` - details the refining procedure of the Autocast dataset for mech benchmarking
 
 ### Filtering Criteria
+
+The need for refinement arises due to issues like dead URLs, paywalls, etc. The refinement process filters out and retains only "working" URLs:
+
 - URLs returning non-200 HTTP status codes are filtered out.
-- URLs containing certain keywords identified during manual checking are excluded.
+- URLs from sites that are difficult to scrape like twitter, bloomberg.
 - Links with less than 1000 words are removed.
 
-### Dataset Specifications
-- The final refined dataset will contain a minimum of 5 and a maximum of 20 source links.
+Only samples with a minimum of 5 working URLs are retained. The maximum number of working source links is 20.
 
-### Storage
-- The refined dataset is hosted on [HuggingFace](https://huggingface.co/datasets/valory/autocast/tree/main).
-- There are two important files:
-    - `olas_benchmark.json` - a JSON subset of the initial autocast dataset.
-    - `olas_docs.pkl` - a pickle file mapping URLs to the retrieved documents.
-    - `retrieved_docs.pkl` - this contains all texts that was retrieved.
-- To download the dateset, please follow instructions on `./nbs/0. download_dataset`
+## Results
+
+| Tool                            | Accuracy           | Correct | Total | Mean Tokens Used  | Mean Cost ($)   |
+|---------------------------------|--------------------|---------|-------|-------------------|-----------------|
+| claude-prediction-offline       | 0.75               | 219     | 292   | 779.2979452054794 | 0.00689010958904109   |
+| claude-prediction-online        | 0.32533164876816173| 1030    | 3166  | 900.2602653190145 | 0.007864980416929873  |
+| prediction-offline              | 0.6365914786967418 | 254     | 399   | 580.390977443609  | 0.0006222556390977439 |
+| prediction-offline-sme          | 0.6021276595744681 | 283     | 470   | 1189.7255319148935| 0.0013500234042553034 |
+| prediction-online               | 0.6369426751592356 | 300     | 471   | 1244.4819532908705| 0.0013571125265392657 |
+| prediction-online-sme           | 0.5583864118895966 | 263     | 471   | 1853.4670912951167| 0.002086902335456468  |
+| prediction-online-summarized-info| 0.635             | 254     | 400   | 1008.8325         | 0.0011212074999999995 |

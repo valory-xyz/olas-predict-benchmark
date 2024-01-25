@@ -7,9 +7,10 @@ import os
 import openai
 import pandas as pd
 from pathlib import Path
-from prediction_request import prediction_request
-from prediction_request_sme import prediction_request_sme
-from prediction_request_claude import prediction_request_claude
+import pickle
+from mech.tools.prediction_request import prediction_request
+from mech.tools.prediction_request_sme import prediction_request_sme
+from mech.tools.prediction_request_claude import prediction_request_claude
 import time
 from tqdm import tqdm
 from utils import get_logger, TokenCounterCallback
@@ -41,7 +42,10 @@ def run_benchmark(kwargs):
     logger.info("Running benchmark tests...")
     start_time = time.time()
 
-    test_questions = json.load(open("./data/autocast/autocast_questions.json"))
+    test_questions = json.load(open("./data/autocast/autocast_questions_filtered.json"))
+
+    with open("./data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
+        url_to_content = pickle.load(f)
 
     tools = kwargs.pop("tools")
     num_questions = kwargs.pop("num_questions", len(test_questions))
@@ -51,13 +55,13 @@ def run_benchmark(kwargs):
     questions = []
 
     for q in test_questions:
-        if q["qtype"] == "t/f":
+        if q["qtype"] == "t/f" and q["answer"] is not None:
             questions.append(q)
 
         if len(questions) >= num_questions:
             break
 
-    logger.info(f"Running {num_questions} questions for each tool: {tools}")
+    logger.info(f"Running {len(questions)} questions for each tool: {tools}")
 
     results_path = Path("results")
     if not results_path.exists():
@@ -99,60 +103,69 @@ def run_benchmark(kwargs):
                     "answer": test_question["answer"],
                     "tool": t,
                     "counter_callback": TokenCounterCallback(),
+                    "prompt_response": None
                 }
+
+                test_q['source_links'] = {source_link: url_to_content[source_link] for source_link in test_q['source_links']}
 
                 CURRENT_RETRIES = 0
 
-                # while True:
-                try:
-                    tool = tool_map(t)
-                    response = tool.run(**{**test_q, **kwargs})
-                    result = json.loads(response[0])
-                    test_q["p_yes"] = float(result["p_yes"])
-                    test_q["p_no"] = float(result["p_no"])
-                    if response[2] is not None:
-                        test_q["input_tokens"] = response[2].input_tokens
-                        test_q["output_tokens"] = response[2].output_tokens
-                        test_q["total_tokens"] = response[2].total_tokens
-                        test_q["input_cost"] = response[2].input_cost
-                        test_q["output_cost"] = response[2].output_cost
-                        test_q["total_cost"] = response[2].total_cost
-                        test_q["prompt_response"] = response[1].replace(os.linesep, "")
+                while True:
+                    try:
+                        tool = tool_map(t)
+                        response = tool.run(**{**test_q, **kwargs})
+                        result = json.loads(response[0])
+                        test_q["p_yes"] = float(result["p_yes"])
+                        test_q["p_no"] = float(result["p_no"])
+                        if response[2] is not None:
+                            test_q["input_tokens"] = response[2].input_tokens
+                            test_q["output_tokens"] = response[2].output_tokens
+                            test_q["total_tokens"] = response[2].total_tokens
+                            test_q["input_cost"] = response[2].input_cost
+                            test_q["output_cost"] = response[2].output_cost
+                            test_q["total_cost"] = response[2].total_cost
+                            test_q["prompt_response"] = response[1].replace(os.linesep, "")
+                        if float(result["p_yes"]) == float(result["p_no"]):
+                            test_q["prediction"] = None
+                        else:
+                            test_q["prediction"] = (
+                                "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
+                            )
 
-                    if float(result["p_yes"]) == float(result["p_no"]):
-                        test_q["prediction"] = "undecided"
-                    else:
-                        test_q["prediction"] = (
-                            "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
-                        )
+                        test_q["Correct"] = test_q["prediction"] == test_q["answer"]
+                        break
 
-                    test_q["Correct"] = test_q["prediction"] == test_q["answer"]
+                    except openai.error.APIError as e:
+                        logger.error(f"Error running benchmark for tool {t}: {e}")
+                        CURRENT_RETRIES += 1
+                        if CURRENT_RETRIES > MAX_RETRIES:
+                            logger.error(
+                                f"Max retries reached for tool {t}. Skipping question."
+                            )
+                            test_q["error"] = e
+                            break
+                        else:
+                            logger.info(
+                                f"Retrying tool {t} for question {test_q['prompt']}"
+                            )
+                            continue
 
-
-                except openai.error.OpenAIError as e:
-                    logger.error(f"Error running benchmark for tool {t}: {e}")
-                    CURRENT_RETRIES += 1
-                    if CURRENT_RETRIES > MAX_RETRIES:
-                        logger.error(
-                            f"Max retries reached for tool {t}. Skipping question."
-                        )
+                    except Exception as e:
+                        logger.error(f"Error running benchmark for tool {t}: {e}")
                         test_q["error"] = e
-                    else:
-                        logger.info(
-                            f"Retrying tool {t} for question {test_q['prompt']}"
-                        )
-
-                except Exception as e:
-                    logger.error(f"Error running benchmark for tool {t}: {e}")
-                    test_q["error"] = e
+                        break
 
                 del test_q["source_links"]
                 del test_q["counter_callback"]
+                del test_q["prompt_response"]
 
                 writer.writerow(test_q)
 
  
     results_df = pd.read_csv(csv_file_path)
+    num_errors = results_df['error'].count()
+    logger.info(f"Num errors: {str(num_errors)}")
+    results_df = results_df.dropna(subset=['prediction'])
     grouped_df = results_df.groupby("tool").agg(
         {
             "Correct": ["mean", "sum", "count"],
@@ -162,7 +175,6 @@ def run_benchmark(kwargs):
             "input_cost": ["mean"],
             "output_cost": ["mean"],
             "total_cost": ["mean"],
-            "error": "count"  # Count non-NaN values in the 'error' column
         }
     )
 
