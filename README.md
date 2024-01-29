@@ -1,6 +1,6 @@
-# OLAS Predict Benchmark
+# Olas Predict Benchmark
 
-This repo is for testing the performance of OLAS tools on historical prediction market data, before deploying them in real-time. Find out more about how to install and run the benchmark, and details on the dataset below. 
+This repo is for testing the performance of Olas tools on historical prediction market data, before deploying them in real-time. Find out more about how to install and run the benchmark, and details on the dataset below. 
 
 # Contents
 
@@ -37,7 +37,7 @@ poetry run benchmark/run_benchmark.py
 
 ## Dataset
 
-We start with the Autocast [dataset](https://huggingface.co/datasets/valory/autocast) from the paper "[Forecasting Future World Events with Neural Networks](http://arxiv.org/abs/2206.15474)", and refine it further for the purpose of testing the performance of OLAS mech prediction tools. The original and refined dataset is stored on [HuggingFace](https://huggingface.co/datasets/valory/autocast). 
+We start with the Autocast [dataset](https://huggingface.co/datasets/valory/autocast) from the paper "[Forecasting Future World Events with Neural Networks](http://arxiv.org/abs/2206.15474)", and refine it further for the purpose of testing the performance of Olas mech prediction tools. The original and refined dataset is stored on [HuggingFace](https://huggingface.co/datasets/valory/autocast). 
 
 The refined dataset files are:
 - `autocast_questions_filtered.json` - a JSON subset of the initial autocast dataset.
