@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "benchmark"
+version = "0.1.0"
+description = ""
+authors = ["Richard Blythman <richardblythman@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+ipykernel = "^6.29.0"
+python-dotenv = "^0.17.0"
+pandas = "^2.1.1"
+tqdm = "^4.66.1"
+ruff = "^0.1.13"
+anthropic = "^0.3.11"
+tiktoken = "^0.5.1"
+huggingface-hub = "^0.20.3"
+mech = { path = "./mech", develop = true }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
