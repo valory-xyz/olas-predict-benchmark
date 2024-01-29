@@ -36,37 +36,90 @@ def tool_map(tool):
         raise Exception(f"Tool {tool} not found.")
 
 
+def prepare_questions(kwargs):
+    test_questions = json.load(open("./data/autocast/autocast_questions_filtered.json"))
+    with open("./data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
+        url_to_content = pickle.load(f)
+    num_questions = kwargs.pop("num_questions", len(test_questions))
+
+    questions = []
+    for q in test_questions:
+        if q["qtype"] == "t/f" and q["answer"] is not None:
+            questions.append(q)
+        if len(questions) >= num_questions:
+            break
+    
+    return questions, url_to_content
+
+def parse_response(response, test_q):
+        result = json.loads(response[0])
+        test_q["p_yes"] = float(result["p_yes"])
+        test_q["p_no"] = float(result["p_no"]) 
+        if response[2] is not None:
+            test_q["input_tokens"] = response[2].cost_dict["input_tokens"]
+            test_q["output_tokens"] = response[2].cost_dict["output_tokens"]
+            test_q["total_tokens"] = response[2].cost_dict["total_tokens"]
+            test_q["input_cost"] = response[2].cost_dict["input_cost"]
+            test_q["output_cost"] = response[2].cost_dict["output_cost"]
+            test_q["total_cost"] = response[2].cost_dict["total_cost"]
+            test_q["prompt_response"] = response[1].replace(os.linesep, "")
+        if float(result["p_yes"]) == float(result["p_no"]):
+            test_q["prediction"] = None
+        else:
+            test_q["prediction"] = (
+                "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
+            )
+        test_q["Correct"] = test_q["prediction"] == test_q["answer"]
+        return test_q
+
+def write_results(csv_file_path):
+
+    results_path = Path(csv_file_path.parent)
+    time_string = csv_file_path.stem.split('_', 1)[-1]
+
+    results_df = pd.read_csv(csv_file_path)
+    num_errors = results_df['error'].count()
+    logger.info(f"Num errors: {str(num_errors)}")
+    results_df = results_df.dropna(subset=['prediction'])
+    grouped_df = results_df.groupby("tool").agg(
+        {
+            "Correct": ["mean", "sum", "count"],
+            "input_tokens": ["mean"],
+            "output_tokens": ["mean"],
+            "total_tokens": ["mean"],
+            "input_cost": ["mean"],
+            "output_cost": ["mean"],
+            "total_cost": ["mean"],
+        }
+    )
+
+    grouped_df.columns = ["_".join(col).strip() for col in grouped_df.columns.values]
+    summary_df = grouped_df.reset_index().rename(
+        columns={
+            "Correct_mean": "accuracy",
+            "Correct_sum": "correct",
+            "Correct_count": "total",
+        }
+    )
+
+    logger.info(f"Results:\n\n {results_df}")
+    summary_df.to_csv(results_path / f"summary_{time_string}.csv", index=False)
+
 def run_benchmark(kwargs):
     """Start the benchmark tests. If a category flag is provided, run the categories with that mark."""
 
     logger.info("Running benchmark tests...")
-    start_time = time.time()
-
-    test_questions = json.load(open("./data/autocast/autocast_questions_filtered.json"))
-
-    with open("./data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
-        url_to_content = pickle.load(f)
 
     tools = kwargs.pop("tools")
-    num_questions = kwargs.pop("num_questions", len(test_questions))
     MAX_RETRIES = kwargs.pop("max_retries", 3)
-
-    # Prepare the questions
-    questions = []
-
-    for q in test_questions:
-        if q["qtype"] == "t/f" and q["answer"] is not None:
-            questions.append(q)
-
-        if len(questions) >= num_questions:
-            break
-
+    questions, url_to_content = prepare_questions(kwargs)
     logger.info(f"Running {len(questions)} questions for each tool: {tools}")
 
     results_path = Path("results")
     if not results_path.exists():
         results_path.mkdir(exist_ok=True)
 
+    start_time = time.time()
     time_string = time.strftime("%y%m%d%H%M%S", time.localtime(start_time))
     csv_file_path = results_path / f"results_{time_string}.csv"
 
@@ -114,25 +167,7 @@ def run_benchmark(kwargs):
                     try:
                         tool = tool_map(t)
                         response = tool.run(**{**test_q, **kwargs})
-                        result = json.loads(response[0])
-                        test_q["p_yes"] = float(result["p_yes"])
-                        test_q["p_no"] = float(result["p_no"])
-                        if response[2] is not None:
-                            test_q["input_tokens"] = response[2].input_tokens
-                            test_q["output_tokens"] = response[2].output_tokens
-                            test_q["total_tokens"] = response[2].total_tokens
-                            test_q["input_cost"] = response[2].input_cost
-                            test_q["output_cost"] = response[2].output_cost
-                            test_q["total_cost"] = response[2].total_cost
-                            test_q["prompt_response"] = response[1].replace(os.linesep, "")
-                        if float(result["p_yes"]) == float(result["p_no"]):
-                            test_q["prediction"] = None
-                        else:
-                            test_q["prediction"] = (
-                                "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
-                            )
-
-                        test_q["Correct"] = test_q["prediction"] == test_q["answer"]
+                        test_q = parse_response(response, test_q)
                         break
 
                     except openai.error.APIError as e:
@@ -161,36 +196,7 @@ def run_benchmark(kwargs):
 
                 writer.writerow(test_q)
 
- 
-    results_df = pd.read_csv(csv_file_path)
-    num_errors = results_df['error'].count()
-    logger.info(f"Num errors: {str(num_errors)}")
-    results_df = results_df.dropna(subset=['prediction'])
-    grouped_df = results_df.groupby("tool").agg(
-        {
-            "Correct": ["mean", "sum", "count"],
-            "input_tokens": ["mean"],
-            "output_tokens": ["mean"],
-            "total_tokens": ["mean"],
-            "input_cost": ["mean"],
-            "output_cost": ["mean"],
-            "total_cost": ["mean"],
-        }
-    )
-
-    grouped_df.columns = ["_".join(col).strip() for col in grouped_df.columns.values]
-
-    summary_df = grouped_df.reset_index().rename(
-        columns={
-            "Correct_mean": "accuracy",
-            "Correct_sum": "correct",
-            "Correct_count": "total",
-        }
-    )
-
-    logger.info("Benchmark tests complete.")
-    logger.info(f"Results:\n\n {results_df}")
-    summary_df.to_csv(results_path / f"summary_{time_string}.csv", index=False)
+    write_results(csv_file_path)
 
     end_time = time.time()
     total_time = end_time - start_time
@@ -199,15 +205,15 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    # kwargs["num_questions"] = 4
+    kwargs["num_questions"] = 4
     kwargs["tools"] = [
         "prediction-online",
         "prediction-offline",
-        "prediction-online-summarized-info",
-        "prediction-offline-sme",
-        "prediction-online-sme",
-        "claude-prediction-offline",
-        "claude-prediction-online",
+        # "prediction-online-summarized-info",
+        # "prediction-offline-sme",
+        # "prediction-online-sme",
+        # "claude-prediction-offline",
+        # "claude-prediction-online",
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
