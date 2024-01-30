@@ -84,6 +84,7 @@ def write_results(csv_file_path):
     grouped_df = results_df.groupby("tool").agg(
         {
             "Correct": ["mean", "sum", "count"],
+            "crowd_correct": ["mean"],
             "input_tokens": ["mean"],
             "output_tokens": ["mean"],
             "total_tokens": ["mean"],
@@ -99,6 +100,7 @@ def write_results(csv_file_path):
             "Correct_mean": "accuracy",
             "Correct_sum": "correct",
             "Correct_count": "total",
+            "crowd_correct_mean": "crowd_accuracy"
         }
     )
 
@@ -139,7 +141,9 @@ def run_benchmark(kwargs):
             "output_cost",
             "total_cost",
             "prompt_response",
-            "error"
+            "error",
+            "crowd_prediction",
+            "crowd_correct"
         ]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
 
@@ -154,10 +158,15 @@ def run_benchmark(kwargs):
                     "prompt": test_question["question"],
                     "source_links": test_question["source_links"],
                     "answer": test_question["answer"],
+                    "crowd_prediction": test_question['crowd'][-1]['forecast'],
                     "tool": t,
                     "counter_callback": TokenCounterCallback(),
                     "prompt_response": None
                 }
+
+                crowd_forecast = test_question['crowd'][-1]['forecast']
+                test_q["crowd_prediction"] = "yes" if crowd_forecast > 0.5 else "no" if crowd_forecast < 0.5 else None
+                test_q["crowd_correct"] = test_q['crowd_prediction'] == test_q["answer"]
 
                 test_q['source_links'] = {source_link: url_to_content[source_link] for source_link in test_q['source_links']}
 
