@@ -69,3 +69,10 @@ Only samples with a minimum of 5 working URLs are retained. The maximum number o
 | prediction-online-summarized-info| 0.6209150326797386| 190     | 306   | 1008.4542483660131| 0.0011213790849673195 |
 | prediction-offline-sme          | 0.599406528189911  | 202     | 337   | 1190.2017804154302| 0.0013518635014836643 |
 | prediction-online-sme           | 0.5905044510385756 | 199     | 337   | 1834.919881305638 | 0.0020690207715133428 |
+
+### Notes
+
+Compared to previous version:
+1. Accuracy for online tools improve by around 4 or 5%
+2. For most tools, online is no longer worse than offline (a lot of people pointed out that this was weird before)
+3. Claude is the exception. However, online seems to answer significantly more questions (maybe because it has more data): 303 in total vs 218.
