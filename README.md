@@ -58,6 +58,15 @@ The need for refinement arises due to issues like dead URLs, paywalls, etc. The 
 
 Only samples with a minimum of 5 working URLs are retained. The maximum number of working source links is 20.
 
+### Scraping Approach
+
+We have also scraped the content of the filtered URLs using a variety of libraries:
+
+- pypdf2 for those urls that are a pdf
+- wikipediaapi for those that are wikipedia
+- requests, readability-lxml and html2text for most others
+- requests, beautifulsoup and html2text for bbc
+
 ## Results
 
 | Tool                            | Accuracy           | Correct | Total | Mean Tokens Used  | Mean Cost ($)   |
