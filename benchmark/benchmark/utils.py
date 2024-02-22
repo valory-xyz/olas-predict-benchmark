@@ -69,6 +69,12 @@ class TokenCounterCallback:
 
     def __call__(self, model: str, **kwargs) -> None:
         """Callback to count the number of tokens used in a generation."""
+        if "gpt-3.5" in model:
+            model = "gpt-3.5-turbo"
+        
+        if "gpt-4" in model:
+            model = "gpt-4"
+
         if model not in list(TokenCounterCallback.TOKEN_PRICES.keys()):
             raise ValueError(f"Model {model} not supported.")
         try:

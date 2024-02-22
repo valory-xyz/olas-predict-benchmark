@@ -11,6 +11,7 @@ import pickle
 from mech.tools.prediction_request import prediction_request
 from mech.tools.prediction_request_sme import prediction_request_sme
 from mech.tools.prediction_request_claude import prediction_request_claude
+from mech.tools.prediction_with_research_report import prediction_with_research_report
 import time
 from tqdm import tqdm
 from utils import get_logger, TokenCounterCallback
@@ -32,6 +33,8 @@ def tool_map(tool):
         return prediction_request_sme
     elif tool in ["claude-prediction-offline", "claude-prediction-online"]:
         return prediction_request_claude
+    elif tool in ["prediction-with-research-conservative", "prediction-with-research-bold"]:
+        return prediction_with_research_report
     else:
         raise Exception(f"Tool {tool} not found.")
 
@@ -179,7 +182,7 @@ def run_benchmark(kwargs):
                         test_q = parse_response(response, test_q)
                         break
 
-                    except openai.error.APIError as e:
+                    except openai.OpenAIError as e:
                         logger.error(f"Error running benchmark for tool {t}: {e}")
                         CURRENT_RETRIES += 1
                         if CURRENT_RETRIES > MAX_RETRIES:
@@ -216,18 +219,23 @@ if __name__ == "__main__":
     kwargs = {}
     kwargs["num_questions"] = 4
     kwargs["tools"] = [
-        "prediction-online",
-        "prediction-offline",
+        # "prediction-online",
+        # "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
         # "claude-prediction-offline",
         # "claude-prediction-online",
+        "prediction-with-research-conservative",
+        # "prediction-with-research-bold",
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
     kwargs["api_keys"]["anthropic"] = os.getenv("ANTHROPIC_API_KEY")
+    kwargs["api_keys"]["tavily"] = os.getenv("TAVILY_API_KEY")
     kwargs["num_urls"] = 3
     kwargs["num_words"] = 300
+
+    print(kwargs)
 
     run_benchmark(kwargs)
