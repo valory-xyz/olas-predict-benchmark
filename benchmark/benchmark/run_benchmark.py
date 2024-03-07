@@ -8,10 +8,14 @@ import openai
 import pandas as pd
 from pathlib import Path
 import pickle
-from mech.tools.prediction_request import prediction_request
-from mech.tools.prediction_request_sme import prediction_request_sme
-from mech.tools.prediction_request_claude import prediction_request_claude
-from mech.tools.prediction_request_rag import prediction_request_rag
+from mech.packages.valory.customs.prediction_request import prediction_request
+from mech.packages.nickcom007.customs.prediction_request_sme import prediction_request_sme
+from mech.packages.valory.customs.prediction_request_claude import prediction_request_claude
+from mech.packages.napthaai.customs.prediction_request_rag import prediction_request_rag
+from mech.packages.valory.customs.prediction_request_embedding import prediction_sentence_embedding
+from mech.packages.jhehemann.customs.prediction_sum_url_content import prediction_sum_url_content
+from mech.packages.psouranis.customs.optimization_by_prompting import optimization_by_prompting
+from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
 import time
 from tqdm import tqdm
 from utils import get_logger, TokenCounterCallback
@@ -226,11 +230,17 @@ if __name__ == "__main__":
         # "prediction-online-sme",
         # "claude-prediction-offline",
         # "claude-prediction-online",
-        'prediction-request-rag'
+        # 'prediction-request-rag',
+        # "prediction-with-research-conservative",
+        # "prediction-with-research-bold",
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
     kwargs["api_keys"]["anthropic"] = os.getenv("ANTHROPIC_API_KEY")
+    kwargs["api_keys"]["google_api_key"] = os.getenv("google_api_key")
+    kwargs["api_keys"]["google_engine_id"] = os.getenv("google_engine_id")
+    kwargs["api_keys"]["tavily"] = os.getenv("TAVILY_API_KEY")
+
     kwargs["num_urls"] = 3
     kwargs["num_words"] = 300
 
