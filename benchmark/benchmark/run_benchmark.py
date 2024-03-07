@@ -171,11 +171,14 @@ def run_benchmark(kwargs):
                     "prompt_response": None
                 }
 
+                if kwargs["provide_source_links"]:
+                    test_q['source_links'] = test_question["source_links"]
+                    test_q['source_links'] = {source_link: url_to_content[source_link] for source_link in test_q['source_links']}
+
                 crowd_forecast = test_question['crowd'][-1]['forecast']
                 test_q["crowd_prediction"] = "yes" if crowd_forecast > 0.5 else "no" if crowd_forecast < 0.5 else None
                 test_q["crowd_correct"] = test_q['crowd_prediction'] == test_q["answer"]
 
-                test_q['source_links'] = {source_link: url_to_content[source_link] for source_link in test_q['source_links']}
 
                 CURRENT_RETRIES = 0
 
@@ -206,7 +209,8 @@ def run_benchmark(kwargs):
                         test_q["error"] = e
                         break
 
-                del test_q["source_links"]
+                if kwargs["provide_source_links"]:
+                    del test_q["source_links"]
                 del test_q["counter_callback"]
                 del test_q["prompt_response"]
 
@@ -243,5 +247,6 @@ if __name__ == "__main__":
 
     kwargs["num_urls"] = 3
     kwargs["num_words"] = 300
+    kwargs["provide_source_links"] = False
 
     run_benchmark(kwargs)
