@@ -27,21 +27,25 @@ logger = get_logger(__name__)
 def tool_map(tool):
     """Map the tool name to the tool class."""
 
-    if tool in [
-        "prediction-online",
-        "prediction-offline",
-        "prediction-online-summarized-info",
-    ]:
-        return prediction_request
-    elif tool in ["prediction-offline-sme", "prediction-online-sme"]:
-        return prediction_request_sme
-    elif tool in ["claude-prediction-offline", "claude-prediction-online"]:
-        return prediction_request_claude
-    elif tool in ["prediction-request-rag"]:
-        return prediction_request_rag
-    else:
-        raise Exception(f"Tool {tool} not found.")
+    tool_dict = {
+        "prediction-online": prediction_request,
+        "prediction-offline": prediction_request,
+        "prediction-online-summarized-info": prediction_request,
+        "prediction-offline-sme": prediction_request_sme,
+        "prediction-online-sme": prediction_request_sme,
+        "claude-prediction-offline": prediction_request_claude,
+        "claude-prediction-online": prediction_request_claude,
+        "prediction-request-rag": prediction_request_rag,
+        "prediction-with-research-conservative": prediction_with_research_report,
+        "prediction-with-research-bold": prediction_with_research_report,
+    }
 
+    tool = tool_dict.get(tool, None) 
+
+    if tool is None:
+        raise Exception(f"Tool {tool} not found.")
+    else:
+        return tool
 
 def prepare_questions(kwargs):
     test_questions = json.load(open("./data/autocast/autocast_questions_filtered.json"))
