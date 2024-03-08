@@ -48,7 +48,7 @@ def prepare_questions(kwargs):
 
 
 def parse_response(response, test_q):
-    result = response[0]
+    result = json.loads(response[0])
 
     test_q["prediction"] = None
     test_q["reasoning"] = None
@@ -58,14 +58,14 @@ def parse_response(response, test_q):
     if not result:
         return test_q
 
-    if result.dict().get("has_occurred") == True:
+    if result.get("has_occurred") == True:
         test_q["prediction"] = "yes"
-    elif result.dict().get("has_occurred") == False:
+    elif result.get("has_occurred") == False:
         test_q["prediction"] = "no"
-    elif result.dict().get("is_valid") == False:
+    elif result.get("is_valid") == False:
         test_q["prediction"] = "invalid"
         return test_q
-    elif result.dict().get("is_determinable") == False:
+    elif result.get("is_determinable") == False:
         test_q["prediction"] = "indeterminable"
     else:
         test_q["prediction"] = None
