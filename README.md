@@ -24,8 +24,11 @@ git lfs install
 git clone https://huggingface.co/datasets/valory/autocast
 cd ..
 
-# clone the tools repo
+# if bechmarking mech tools: clone the tools repo
 git submodule add https://github.com/valory-xyz/mech.git
+
+# if bechmarking baby-degen strategies: clone the baby-degen repo
+git submodule add https://github.com/valory-xyz/baby-degen.git
 
 # set up env
 poetry install

@@ -6,7 +6,7 @@ authors = ["Richard Blythman <richardblythman@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.11"
 ipykernel = "^6.29.0"
 python-dotenv = "^0.17.0"
 pandas = "^2.1.1"
@@ -15,7 +15,8 @@ ruff = "^0.1.13"
 anthropic = "^0.3.11"
 tiktoken = "^0.5.1"
 huggingface-hub = "^0.20.3"
-mech = { path = "./mech", develop = true }
+# mech = { path = "./mech", develop = true }
+solana-trader = { path = "./baby_degen", develop = true }
 pypdf2 = "^3.0.1"
 readability-lxml = "^0.8.1"
 html2text = "^2020.1.16"

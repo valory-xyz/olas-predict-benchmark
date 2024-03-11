@@ -4,3 +4,6 @@
 [submodule "benchmark/mech"]
 	path = benchmark/mech
 	url = https://github.com/valory-xyz/mech.git
+[submodule "benchmark/baby-degen"]
+	path = benchmark/baby-degen
+	url = https://github.com/valory-xyz/baby-degen.git
