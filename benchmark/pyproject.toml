@@ -22,6 +22,7 @@ readability-lxml = "^0.8.1"
 html2text = "^2020.1.16"
 docstring-parser = "^0.15"
 faiss-cpu = "^1.7.4"
+ccxt = "^4.2.69"
 
 [build-system]
 requires = ["poetry-core"]
