@@ -4,3 +4,6 @@
 [submodule "benchmark/mech"]
 	path = benchmark/mech
 	url = https://github.com/valory-xyz/mech.git
+[submodule "benchmark/mech-client"]
+	path = benchmark/mech-client
+	url = https://github.com/valory-xyz/mech-client.git
