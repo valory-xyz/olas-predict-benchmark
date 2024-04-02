@@ -27,9 +27,6 @@ cd ..
 # add the tools repo
 git submodule add https://github.com/valory-xyz/mech.git
 
-# add the mech client repo
-git submodule add https://github.com/valory-xyz/mech-client.git
-
 # set up env
 poetry install
 poetry shell
