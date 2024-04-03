@@ -129,7 +129,7 @@ def run_benchmark(kwargs):
     logger.info("Running benchmark tests...")
 
     tools = kwargs.pop("tools")
-    model = kwargs.pop("model")
+    model = kwargs.pop("model")[0]
     MAX_RETRIES = kwargs.pop("max_retries", 3)
     questions, url_to_content = prepare_questions(kwargs)
     logger.info(f"Running {len(questions)} questions for each tool: {tools}")
@@ -169,6 +169,8 @@ def run_benchmark(kwargs):
             writer.writeheader()
 
         for t in tools:
+            correct_answers = 0
+            total_answers = 0
             for test_question in tqdm(
                 questions, desc=f"Running tool {t}", total=len(questions)
             ):
@@ -198,6 +200,14 @@ def run_benchmark(kwargs):
                         tool = tool_map(t)
                         response = tool.run(**{**test_q, **kwargs})
                         test_q = parse_response(response, test_q)
+                        if test_q["Correct"] == True:
+                            correct_answers += 1
+                        if test_q["prediction"] is not None:
+                            total_answers += 1
+
+                        print(
+                            f"===========ACCURACY============== {correct_answers/total_answers*100}%"
+                        )
                         break
 
                     except openai.APIError as e:
@@ -235,7 +245,7 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 4
+    # kwargs["num_questions"] = 4
     kwargs["tools"] = [
         # "prediction-online",
         # "prediction-offline",
@@ -251,6 +261,11 @@ if __name__ == "__main__":
         # "prediction-request-rag-claude",
         # "prediction-url-cot-claude",
     ]
+    kwargs["model"] = [ # only supports running for one model (takes first in list)
+        # "claude-3-haiku-20240307", 
+        # "claude-3-sonnet-20240229", 
+        "claude-3-opus-20240229",
+    ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
     kwargs["api_keys"]["anthropic"] = os.getenv("ANTHROPIC_API_KEY")
@@ -261,5 +276,4 @@ if __name__ == "__main__":
     kwargs["num_urls"] = 3
     kwargs["num_words"] = 300
     kwargs["provide_source_links"] = True
-    kwargs["model"] = "claude-3-sonnet-20240229" # ["claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-opus-20240229"]
     run_benchmark(kwargs)
