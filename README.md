@@ -24,7 +24,7 @@ git lfs install
 git clone https://huggingface.co/datasets/valory/autocast
 cd ..
 
-# clone the tools repo
+# add the tools repo
 git submodule add https://github.com/valory-xyz/mech.git
 
 # set up env
