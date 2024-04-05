@@ -20,11 +20,12 @@ from mech.packages.psouranis.customs.optimization_by_prompting import optimizati
 from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
 import time
 from tqdm import tqdm
-from utils import get_logger, TokenCounterCallback
+from benchmark.utils import get_logger, TokenCounterCallback
 
 load_dotenv()
 logger = get_logger(__name__)
 
+this_dir = Path(os.path.dirname(__file__))
 
 def tool_map(tool):
     """Map the tool name to the tool class."""
@@ -53,8 +54,8 @@ def tool_map(tool):
         return tool
 
 def prepare_questions(kwargs):
-    test_questions = json.load(open("./data/autocast/autocast_questions_filtered.json"))
-    with open("./data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
+    test_questions = json.load(open(this_dir.parent / "data/autocast/autocast_questions_filtered.json"))
+    with open(this_dir.parent / "data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
         url_to_content = pickle.load(f)
     num_questions = kwargs.pop("num_questions", len(test_questions))
 
@@ -204,10 +205,9 @@ def run_benchmark(kwargs):
                             correct_answers += 1
                         if test_q["prediction"] is not None:
                             total_answers += 1
-
-                        print(
-                            f"===========ACCURACY============== {correct_answers/total_answers*100}%"
-                        )
+                            print(
+                                f"===========ACCURACY============== {correct_answers/total_answers*100}%"
+                            )
                         break
 
                     except openai.APIError as e:
@@ -245,10 +245,10 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    # kwargs["num_questions"] = 4
+    kwargs["num_questions"] = 2
     kwargs["tools"] = [
         # "prediction-online",
-        # "prediction-offline",
+        "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
@@ -257,14 +257,16 @@ if __name__ == "__main__":
         # 'prediction-request-rag',
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
-        "prediction-request-reasoning-claude",
+        # "prediction-request-reasoning-claude",
         # "prediction-request-rag-claude",
         # "prediction-url-cot-claude",
     ]
     kwargs["model"] = [ # only supports running for one model (takes first in list)
         # "claude-3-haiku-20240307", 
         # "claude-3-sonnet-20240229", 
-        "claude-3-opus-20240229",
+        # "claude-3-opus-20240229",
+        "gpt-3.5-turbo-0125",
+        # "gpt-4-0125-preview"
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
