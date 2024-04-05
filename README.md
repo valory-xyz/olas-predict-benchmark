@@ -11,7 +11,7 @@ This repo is for testing the performance of Olas tools on historical prediction 
 ## Initial Setup
 
 ```console
-git clone https://github.com/valory-xyz/olas-predict-benchmark.git
+git clone --recurse-submodules https://github.com/valory-xyz/olas-predict-benchmark.git
 cd olas-predict-benchmark
 
 # create env and add openai api key
@@ -20,12 +20,13 @@ cp .env.sample .env
 # download the benchmark data
 mkdir benchmark/data
 cd benchmark/data
+
+# For linux users or Windows users using WSL you need to install first the library
+sudo apt-get install git-lfs
+
 git lfs install 
 git clone https://huggingface.co/datasets/valory/autocast
 cd ..
-
-# add the tools repo
-git submodule add https://github.com/valory-xyz/mech.git
 
 # set up env
 poetry install
@@ -34,6 +35,10 @@ poetry shell
 # run benchmark
 poetry run benchmark/run_benchmark.py
 ```
+
+## Troubleshooting
+In case you face some error with the torch library of the type "No module named 'torch._C'" please uninstall the torch library and install it again.
+You might face some errors of missing libraries on the virtual environment, please check the virtual environment is activated and install them.
 
 ## Dataset
 
