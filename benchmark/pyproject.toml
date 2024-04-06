@@ -12,17 +12,9 @@ python-dotenv = "^0.17.0"
 pandas = "^2.1.1"
 tqdm = "^4.66.1"
 ruff = "^0.1.13"
-anthropic = "^0.3.11"
-tiktoken = "^0.5.1"
 huggingface-hub = "^0.20.3"
-# mech = { path = "./mech", develop = true }
-pypdf2 = "^3.0.1"
-readability-lxml = "^0.8.1"
-html2text = "^2020.1.16"
-docstring-parser = "^0.15"
-faiss-cpu = "^1.7.4"
-setuptools = "^69.2.0"
-mech-client = "^0.2.12"
+mech = { path = "./mech", develop = true }
+sentence-transformers = "^2.6.1"
 
 [build-system]
 requires = ["poetry-core"]
