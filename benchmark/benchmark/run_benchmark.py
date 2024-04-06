@@ -48,8 +48,12 @@ def tool_map(tool):
         return tool
 
 def prepare_questions(kwargs):
-    test_questions = json.load(open("./data/autocast/autocast_questions_filtered.json"))
-    with open("./data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
+    """Prepare the questions for the benchmark tests."""
+    file_path = Path(__file__).resolve()
+    package_dir = file_path.parent.parent
+
+    test_questions = json.load(open(f"{package_dir}/data/autocast/autocast_questions_filtered.json"))
+    with open(f"{package_dir}/data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
         url_to_content = pickle.load(f)
     num_questions = kwargs.pop("num_questions", len(test_questions))
 
