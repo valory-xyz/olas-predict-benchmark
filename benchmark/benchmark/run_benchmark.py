@@ -15,7 +15,7 @@ from mech.packages.napthaai.customs.prediction_request_rag import prediction_req
 from mech.packages.valory.customs.prediction_request_embedding import prediction_sentence_embedding
 from mech.packages.jhehemann.customs.prediction_sum_url_content import prediction_sum_url_content
 from mech.packages.psouranis.customs.optimization_by_prompting import optimization_by_prompting
-from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
+# from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
 import time
 from tqdm import tqdm
 from utils import get_logger, TokenCounterCallback
@@ -36,8 +36,8 @@ def tool_map(tool):
         "claude-prediction-offline": prediction_request_claude,
         "claude-prediction-online": prediction_request_claude,
         "prediction-request-rag": prediction_request_rag,
-        "prediction-with-research-conservative": prediction_with_research_report,
-        "prediction-with-research-bold": prediction_with_research_report,
+        # "prediction-with-research-conservative": prediction_with_research_report,
+        # "prediction-with-research-bold": prediction_with_research_report,
     }
 
     tool = tool_dict.get(tool, None) 
