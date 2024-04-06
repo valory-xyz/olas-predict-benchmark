@@ -11,7 +11,6 @@ ipykernel = "^6.29.0"
 python-dotenv = "^0.17.0"
 pandas = "^2.1.1"
 tqdm = "^4.66.1"
-ruff = "^0.1.13"
 huggingface-hub = "^0.20.3"
 mech = { path = "./mech", develop = true }
 sentence-transformers = "^2.6.1"
