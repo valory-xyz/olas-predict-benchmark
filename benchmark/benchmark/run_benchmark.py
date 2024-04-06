@@ -18,7 +18,7 @@ from mech.packages.psouranis.customs.optimization_by_prompting import optimizati
 # from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
 import time
 from tqdm import tqdm
-from utils import get_logger, TokenCounterCallback
+from benchmark.utils import get_logger, TokenCounterCallback
 
 load_dotenv()
 logger = get_logger(__name__)
