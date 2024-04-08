@@ -12,17 +12,20 @@ from mech.packages.valory.customs.prediction_request import prediction_request
 from mech.packages.nickcom007.customs.prediction_request_sme import prediction_request_sme
 from mech.packages.valory.customs.prediction_request_claude import prediction_request_claude
 from mech.packages.napthaai.customs.prediction_request_rag import prediction_request_rag
+from mech.packages.napthaai.customs.prediction_request_reasoning_claude import prediction_request_reasoning_claude
+from mech.packages.napthaai.customs.prediction_request_rag_claude import prediction_request_rag_claude
+from mech.packages.napthaai.customs.prediction_url_cot_claude import prediction_url_cot_claude
 from mech.packages.valory.customs.prediction_request_embedding import prediction_sentence_embedding
-from mech.packages.jhehemann.customs.prediction_sum_url_content import prediction_sum_url_content
 from mech.packages.psouranis.customs.optimization_by_prompting import optimization_by_prompting
 from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
 import time
 from tqdm import tqdm
-from utils import get_logger, TokenCounterCallback
+from benchmark.utils import get_logger, TokenCounterCallback
 
 load_dotenv()
 logger = get_logger(__name__)
 
+this_dir = Path(os.path.dirname(__file__))
 
 def tool_map(tool):
     """Map the tool name to the tool class."""
@@ -38,6 +41,9 @@ def tool_map(tool):
         "prediction-request-rag": prediction_request_rag,
         "prediction-with-research-conservative": prediction_with_research_report,
         "prediction-with-research-bold": prediction_with_research_report,
+        "prediction-request-rag-claude": prediction_request_rag_claude,
+        "prediction-request-reasoning-claude": prediction_request_reasoning_claude,
+        "prediction-url-cot-claude": prediction_url_cot_claude,
     }
 
     tool = tool_dict.get(tool, None) 
@@ -48,8 +54,8 @@ def tool_map(tool):
         return tool
 
 def prepare_questions(kwargs):
-    test_questions = json.load(open("./data/autocast/autocast_questions_filtered.json"))
-    with open("./data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
+    test_questions = json.load(open(this_dir.parent / "data/autocast/autocast_questions_filtered.json"))
+    with open(this_dir.parent / "data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
         url_to_content = pickle.load(f)
     num_questions = kwargs.pop("num_questions", len(test_questions))
 
@@ -63,25 +69,25 @@ def prepare_questions(kwargs):
     return questions, url_to_content
 
 def parse_response(response, test_q):
-        result = json.loads(response[0])
-        test_q["p_yes"] = float(result["p_yes"])
-        test_q["p_no"] = float(result["p_no"]) 
-        if response[2] is not None:
-            test_q["input_tokens"] = response[2].cost_dict["input_tokens"]
-            test_q["output_tokens"] = response[2].cost_dict["output_tokens"]
-            test_q["total_tokens"] = response[2].cost_dict["total_tokens"]
-            test_q["input_cost"] = response[2].cost_dict["input_cost"]
-            test_q["output_cost"] = response[2].cost_dict["output_cost"]
-            test_q["total_cost"] = response[2].cost_dict["total_cost"]
-            test_q["prompt_response"] = response[1].replace(os.linesep, "")
-        if float(result["p_yes"]) == float(result["p_no"]):
-            test_q["prediction"] = None
-        else:
-            test_q["prediction"] = (
-                "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
-            )
-        test_q["Correct"] = test_q["prediction"] == test_q["answer"]
-        return test_q
+    result = json.loads(response[0])
+    test_q["p_yes"] = float(result["p_yes"])
+    test_q["p_no"] = float(result["p_no"]) 
+    if response[3] is not None:
+        test_q["input_tokens"] = response[3].cost_dict["input_tokens"]
+        test_q["output_tokens"] = response[3].cost_dict["output_tokens"]
+        test_q["total_tokens"] = response[3].cost_dict["total_tokens"]
+        test_q["input_cost"] = response[3].cost_dict["input_cost"]
+        test_q["output_cost"] = response[3].cost_dict["output_cost"]
+        test_q["total_cost"] = response[3].cost_dict["total_cost"]
+    test_q["prompt_response"] = response[1].replace(os.linesep, "")
+    if float(result["p_yes"]) == float(result["p_no"]):
+        test_q["prediction"] = None
+    else:
+        test_q["prediction"] = (
+            "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
+        )
+    test_q["Correct"] = test_q["prediction"] == test_q["answer"]
+    return test_q
 
 def write_results(csv_file_path):
 
@@ -92,7 +98,7 @@ def write_results(csv_file_path):
     num_errors = results_df['error'].count()
     logger.info(f"Num errors: {str(num_errors)}")
     results_df = results_df.dropna(subset=['prediction'])
-    grouped_df = results_df.groupby("tool").agg(
+    grouped_df = results_df.groupby(["tool", "model"]).agg(
         {
             "Correct": ["mean", "sum", "count"],
             "crowd_correct": ["mean"],
@@ -124,6 +130,7 @@ def run_benchmark(kwargs):
     logger.info("Running benchmark tests...")
 
     tools = kwargs.pop("tools")
+    model = kwargs.pop("model")[0]
     MAX_RETRIES = kwargs.pop("max_retries", 3)
     questions, url_to_content = prepare_questions(kwargs)
     logger.info(f"Running {len(questions)} questions for each tool: {tools}")
@@ -141,6 +148,7 @@ def run_benchmark(kwargs):
             "prompt",
             "answer",
             "tool",
+            "model",
             "p_yes",
             "p_no",
             "prediction",
@@ -162,15 +170,17 @@ def run_benchmark(kwargs):
             writer.writeheader()
 
         for t in tools:
+            correct_answers = 0
+            total_answers = 0
             for test_question in tqdm(
                 questions, desc=f"Running tool {t}", total=len(questions)
             ):
                 test_q = {
                     "prompt": test_question["question"],
-                    "source_links": test_question["source_links"],
                     "answer": test_question["answer"],
                     "crowd_prediction": test_question['crowd'][-1]['forecast'],
                     "tool": t,
+                    "model": model,
                     "counter_callback": TokenCounterCallback(),
                     "prompt_response": None
                 }
@@ -191,6 +201,13 @@ def run_benchmark(kwargs):
                         tool = tool_map(t)
                         response = tool.run(**{**test_q, **kwargs})
                         test_q = parse_response(response, test_q)
+                        if test_q["Correct"] == True:
+                            correct_answers += 1
+                        if test_q["prediction"] is not None:
+                            total_answers += 1
+                            print(
+                                f"===========ACCURACY============== {correct_answers/total_answers*100}%"
+                            )
                         break
 
                     except openai.APIError as e:
@@ -216,7 +233,6 @@ def run_benchmark(kwargs):
                 if kwargs["provide_source_links"]:
                     del test_q["source_links"]
                 del test_q["counter_callback"]
-                del test_q["prompt_response"]
 
                 writer.writerow(test_q)
 
@@ -229,10 +245,10 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 4
+    kwargs["num_questions"] = 2
     kwargs["tools"] = [
         # "prediction-online",
-        # "prediction-offline",
+        "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
@@ -241,6 +257,16 @@ if __name__ == "__main__":
         # 'prediction-request-rag',
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
+        # "prediction-request-reasoning-claude",
+        # "prediction-request-rag-claude",
+        # "prediction-url-cot-claude",
+    ]
+    kwargs["model"] = [ # only supports running for one model (takes first in list)
+        # "claude-3-haiku-20240307", 
+        # "claude-3-sonnet-20240229", 
+        # "claude-3-opus-20240229",
+        "gpt-3.5-turbo-0125",
+        # "gpt-4-0125-preview"
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
@@ -251,6 +277,5 @@ if __name__ == "__main__":
 
     kwargs["num_urls"] = 3
     kwargs["num_words"] = 300
-    kwargs["provide_source_links"] = False
-
+    kwargs["provide_source_links"] = True
     run_benchmark(kwargs)
