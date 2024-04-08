@@ -12,10 +12,7 @@ from mech.packages.valory.customs.prediction_request import prediction_request
 from mech.packages.nickcom007.customs.prediction_request_sme import prediction_request_sme
 from mech.packages.valory.customs.prediction_request_claude import prediction_request_claude
 from mech.packages.napthaai.customs.prediction_request_rag import prediction_request_rag
-from mech.packages.valory.customs.prediction_request_embedding import prediction_sentence_embedding
-from mech.packages.jhehemann.customs.prediction_sum_url_content import prediction_sum_url_content
-from mech.packages.psouranis.customs.optimization_by_prompting import optimization_by_prompting
-# from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
+from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
 import time
 from tqdm import tqdm
 from benchmark.utils import get_logger, TokenCounterCallback
@@ -36,8 +33,8 @@ def tool_map(tool):
         "claude-prediction-offline": prediction_request_claude,
         "claude-prediction-online": prediction_request_claude,
         "prediction-request-rag": prediction_request_rag,
-        # "prediction-with-research-conservative": prediction_with_research_report,
-        # "prediction-with-research-bold": prediction_with_research_report,
+        "prediction-with-research-conservative": prediction_with_research_report,
+        "prediction-with-research-bold": prediction_with_research_report,
     }
 
     tool = tool_dict.get(tool, None) 
@@ -70,13 +67,13 @@ def parse_response(response, test_q):
         result = json.loads(response[0])
         test_q["p_yes"] = float(result["p_yes"])
         test_q["p_no"] = float(result["p_no"]) 
-        if response[2] is not None:
-            test_q["input_tokens"] = response[2].cost_dict["input_tokens"]
-            test_q["output_tokens"] = response[2].cost_dict["output_tokens"]
-            test_q["total_tokens"] = response[2].cost_dict["total_tokens"]
-            test_q["input_cost"] = response[2].cost_dict["input_cost"]
-            test_q["output_cost"] = response[2].cost_dict["output_cost"]
-            test_q["total_cost"] = response[2].cost_dict["total_cost"]
+        if response[3] is not None:
+            test_q["input_tokens"] = response[3].cost_dict["input_tokens"]
+            test_q["output_tokens"] = response[3].cost_dict["output_tokens"]
+            test_q["total_tokens"] = response[3].cost_dict["total_tokens"]
+            test_q["input_cost"] = response[3].cost_dict["input_cost"]
+            test_q["output_cost"] = response[3].cost_dict["output_cost"]
+            test_q["total_cost"] = response[3].cost_dict["total_cost"]
             test_q["prompt_response"] = response[1].replace(os.linesep, "")
         if float(result["p_yes"]) == float(result["p_no"]):
             test_q["prediction"] = None
