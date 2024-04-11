@@ -10,11 +10,7 @@ from pathlib import Path
 import pickle
 from mech.packages.valory.customs.prediction_request import prediction_request
 from mech.packages.nickcom007.customs.prediction_request_sme import prediction_request_sme
-from mech.packages.valory.customs.prediction_request_claude import prediction_request_claude
 from mech.packages.napthaai.customs.prediction_request_rag import prediction_request_rag
-from mech.packages.napthaai.customs.prediction_request_reasoning_claude import prediction_request_reasoning_claude
-from mech.packages.napthaai.customs.prediction_request_rag_claude import prediction_request_rag_claude
-from mech.packages.napthaai.customs.prediction_url_cot_claude import prediction_url_cot_claude
 from mech.packages.valory.customs.prediction_request_embedding import prediction_sentence_embedding
 from mech.packages.psouranis.customs.optimization_by_prompting import optimization_by_prompting
 from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
@@ -36,14 +32,9 @@ def tool_map(tool):
         "prediction-online-summarized-info": prediction_request,
         "prediction-offline-sme": prediction_request_sme,
         "prediction-online-sme": prediction_request_sme,
-        "claude-prediction-offline": prediction_request_claude,
-        "claude-prediction-online": prediction_request_claude,
         "prediction-request-rag": prediction_request_rag,
         "prediction-with-research-conservative": prediction_with_research_report,
         "prediction-with-research-bold": prediction_with_research_report,
-        "prediction-request-rag-claude": prediction_request_rag_claude,
-        "prediction-request-reasoning-claude": prediction_request_reasoning_claude,
-        "prediction-url-cot-claude": prediction_url_cot_claude,
     }
 
     tool = tool_dict.get(tool, None) 
@@ -248,31 +239,29 @@ if __name__ == "__main__":
     kwargs["num_questions"] = 2
     kwargs["tools"] = [
         # "prediction-online",
-        "prediction-offline",
+        # "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
-        # "claude-prediction-offline",
-        # "claude-prediction-online",
-        # 'prediction-request-rag',
+        'prediction-request-rag',
+        "prediction-request-reasoning",
+        "prediction-url-cot",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
-        # "prediction-request-reasoning-claude",
-        # "prediction-request-rag-claude",
-        # "prediction-url-cot-claude",
     ]
+    kwargs["llm_provider"] = "anthropic"
     kwargs["model"] = [ # only supports running for one model (takes first in list)
-        # "claude-3-haiku-20240307", 
+        "claude-3-haiku-20240307", 
         # "claude-3-sonnet-20240229", 
         # "claude-3-opus-20240229",
-        "gpt-3.5-turbo-0125",
+        # "gpt-3.5-turbo-0125",
         # "gpt-4-0125-preview"
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
     kwargs["api_keys"]["anthropic"] = os.getenv("ANTHROPIC_API_KEY")
-    kwargs["api_keys"]["google_api_key"] = os.getenv("google_api_key")
-    kwargs["api_keys"]["google_engine_id"] = os.getenv("google_engine_id")
+    kwargs["api_keys"]["google_api_key"] = os.getenv("GOOGLE_API_KEY")
+    kwargs["api_keys"]["google_engine_id"] = os.getenv("GOOGLE_ENGINE_ID")
     kwargs["api_keys"]["tavily"] = os.getenv("TAVILY_API_KEY")
 
     kwargs["num_urls"] = 3
