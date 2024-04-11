@@ -74,15 +74,7 @@ We have also scraped the content of the filtered URLs using a variety of librari
 
 ## Results
 
-| Tool                            | Accuracy           | Correct | Total | Mean Tokens Used  | Mean Cost ($)   |
-|---------------------------------|--------------------|---------|-------|-------------------|-----------------|
-| claude-prediction-offline       | 0.7201834862385321 | 157     | 218   | 779.4770642201835 | 0.006891669724770637  |
-| claude-prediction-online        | 0.6600660066006601 | 200     | 303   | 1505.3135313531352| 0.013348171617161701  |
-| prediction-online               | 0.676737160120846  | 224     | 331   | 1219.6918429003022| 0.001332990936555879  |
-| prediction-offline              | 0.6599326599326599 | 196     | 297   | 579.6565656565657 | 0.000621023569023569  |
-| prediction-online-summarized-info| 0.6209150326797386| 190     | 306   | 1008.4542483660131| 0.0011213790849673195 |
-| prediction-offline-sme          | 0.599406528189911  | 202     | 337   | 1190.2017804154302| 0.0013518635014836643 |
-| prediction-online-sme           | 0.5905044510385756 | 199     | 337   | 1834.919881305638 | 0.0020690207715133428 |
+You can check out the leaderboard on our [HuggingFace Space](https://huggingface.co/spaces/valory/olas-prediction-leaderboard). 
 
 ### Notes
 
