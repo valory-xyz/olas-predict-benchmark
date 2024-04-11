@@ -4,6 +4,7 @@ import anthropic
 
 PRICE_NUM_TOKENS = 1000
 
+
 def get_logger(name, level=logging.DEBUG):
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -18,6 +19,7 @@ def get_logger(name, level=logging.DEBUG):
 
 def encoding_for_model(model: str):
     return tiktoken.encoding_for_model(model)
+
 
 def count_tokens(text: str, model: str) -> int:
     if "claude" in model:
@@ -41,6 +43,9 @@ class TokenCounterCallback:
         "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
         "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
         "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},
+        "cohere/command-r-plus": {"input": 0.003, "output": 0.015},
+        "mistralai/mistral-medium": {"input": 0.0027, "output": 0.0081},
+        "mistralai/mixtral-8x22b": {"input": 0.00108, "output": 0.00108},
     }
 
     def __init__(self) -> None:
@@ -51,15 +56,19 @@ class TokenCounterCallback:
             "total_tokens": 0,
             "input_cost": 0,
             "output_cost": 0,
-            "total_cost": 0
+            "total_cost": 0,
         }
 
     @staticmethod
     def token_to_cost(tokens: int, model: str, tokens_type: str) -> float:
         """Converts a number of tokens to a cost in dollars."""
-        return tokens / PRICE_NUM_TOKENS * TokenCounterCallback.TOKEN_PRICES[model][tokens_type]
+        return (
+            tokens
+            / PRICE_NUM_TOKENS
+            * TokenCounterCallback.TOKEN_PRICES[model][tokens_type]
+        )
 
-    def calculate_cost(self, tokens_type: str, model: str, **kwargs) -> None: 
+    def calculate_cost(self, tokens_type: str, model: str, **kwargs) -> None:
         # Check if it its prompt or tokens are passed in
         prompt_key = f"{tokens_type}_prompt"
         token_key = f"{tokens_type}_tokens"
@@ -80,8 +89,12 @@ class TokenCounterCallback:
         try:
             self.calculate_cost("input", model, **kwargs)
             self.calculate_cost("output", model, **kwargs)
-            self.cost_dict["total_tokens"] = self.cost_dict["input_tokens"] + self.cost_dict["output_tokens"]
-            self.cost_dict["total_cost"] = self.cost_dict["input_cost"] + self.cost_dict["output_cost"]
+            self.cost_dict["total_tokens"] = (
+                self.cost_dict["input_tokens"] + self.cost_dict["output_tokens"]
+            )
+            self.cost_dict["total_cost"] = (
+                self.cost_dict["input_cost"] + self.cost_dict["output_cost"]
+            )
         except Exception as e:
             logging.error(f"Error in TokenCounterCallback: {e}")
 

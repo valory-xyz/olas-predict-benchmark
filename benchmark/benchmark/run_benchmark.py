@@ -9,11 +9,19 @@ import pandas as pd
 from pathlib import Path
 import pickle
 from mech.packages.valory.customs.prediction_request import prediction_request
-from mech.packages.nickcom007.customs.prediction_request_sme import prediction_request_sme
+from mech.packages.nickcom007.customs.prediction_request_sme import (
+    prediction_request_sme,
+)
 from mech.packages.napthaai.customs.prediction_request_rag import prediction_request_rag
-from mech.packages.valory.customs.prediction_request_embedding import prediction_sentence_embedding
-from mech.packages.psouranis.customs.optimization_by_prompting import optimization_by_prompting
-from mech.packages.polywrap.customs.prediction_with_research_report import prediction_with_research_report
+from mech.packages.valory.customs.prediction_request_embedding import (
+    prediction_sentence_embedding,
+)
+from mech.packages.psouranis.customs.optimization_by_prompting import (
+    optimization_by_prompting,
+)
+from mech.packages.polywrap.customs.prediction_with_research_report import (
+    prediction_with_research_report,
+)
 import time
 from tqdm import tqdm
 from benchmark.utils import get_logger, TokenCounterCallback
@@ -22,6 +30,7 @@ load_dotenv()
 logger = get_logger(__name__)
 
 this_dir = Path(os.path.dirname(__file__))
+
 
 def tool_map(tool):
     """Map the tool name to the tool class."""
@@ -37,16 +46,21 @@ def tool_map(tool):
         "prediction-with-research-bold": prediction_with_research_report,
     }
 
-    tool = tool_dict.get(tool, None) 
+    tool = tool_dict.get(tool, None)
 
     if tool is None:
         raise Exception(f"Tool {tool} not found.")
     else:
         return tool
 
+
 def prepare_questions(kwargs):
-    test_questions = json.load(open(this_dir.parent / "data/autocast/autocast_questions_filtered.json"))
-    with open(this_dir.parent / "data/autocast/autocast_questions_filtered.pkl", 'rb') as f:
+    test_questions = json.load(
+        open(this_dir.parent / "data/autocast/autocast_questions_filtered.json")
+    )
+    with open(
+        this_dir.parent / "data/autocast/autocast_questions_filtered.pkl", "rb"
+    ) as f:
         url_to_content = pickle.load(f)
     num_questions = kwargs.pop("num_questions", len(test_questions))
 
@@ -56,13 +70,14 @@ def prepare_questions(kwargs):
             questions.append(q)
         if len(questions) >= num_questions:
             break
-    
+
     return questions, url_to_content
+
 
 def parse_response(response, test_q):
     result = json.loads(response[0])
     test_q["p_yes"] = float(result["p_yes"])
-    test_q["p_no"] = float(result["p_no"]) 
+    test_q["p_no"] = float(result["p_no"])
     if response[3] is not None:
         test_q["input_tokens"] = response[3].cost_dict["input_tokens"]
         test_q["output_tokens"] = response[3].cost_dict["output_tokens"]
@@ -74,21 +89,20 @@ def parse_response(response, test_q):
     if float(result["p_yes"]) == float(result["p_no"]):
         test_q["prediction"] = None
     else:
-        test_q["prediction"] = (
-            "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
-        )
+        test_q["prediction"] = "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
     test_q["Correct"] = test_q["prediction"] == test_q["answer"]
     return test_q
+
 
 def write_results(csv_file_path):
 
     results_path = Path(csv_file_path.parent)
-    time_string = csv_file_path.stem.split('_', 1)[-1]
+    time_string = csv_file_path.stem.split("_", 1)[-1]
 
     results_df = pd.read_csv(csv_file_path)
-    num_errors = results_df['error'].count()
+    num_errors = results_df["error"].count()
     logger.info(f"Num errors: {str(num_errors)}")
-    results_df = results_df.dropna(subset=['prediction'])
+    results_df = results_df.dropna(subset=["prediction"])
     grouped_df = results_df.groupby(["tool", "model"]).agg(
         {
             "Correct": ["mean", "sum", "count"],
@@ -108,12 +122,13 @@ def write_results(csv_file_path):
             "Correct_mean": "accuracy",
             "Correct_sum": "correct",
             "Correct_count": "total",
-            "crowd_correct_mean": "crowd_accuracy"
+            "crowd_correct_mean": "crowd_accuracy",
         }
     )
 
     logger.info(f"Results:\n\n {results_df}")
     summary_df.to_csv(results_path / f"summary_{time_string}.csv", index=False)
+
 
 def run_benchmark(kwargs):
     """Start the benchmark tests. If a category flag is provided, run the categories with that mark."""
@@ -153,7 +168,7 @@ def run_benchmark(kwargs):
             "prompt_response",
             "error",
             "crowd_prediction",
-            "crowd_correct"
+            "crowd_correct",
         ]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
 
@@ -169,21 +184,27 @@ def run_benchmark(kwargs):
                 test_q = {
                     "prompt": test_question["question"],
                     "answer": test_question["answer"],
-                    "crowd_prediction": test_question['crowd'][-1]['forecast'],
+                    "crowd_prediction": test_question["crowd"][-1]["forecast"],
                     "tool": t,
                     "model": model,
                     "counter_callback": TokenCounterCallback(),
-                    "prompt_response": None
+                    "prompt_response": None,
                 }
 
                 if kwargs["provide_source_links"]:
-                    test_q['source_links'] = test_question["source_links"]
-                    test_q['source_links'] = {source_link: url_to_content[source_link] for source_link in test_q['source_links']}
+                    test_q["source_links"] = test_question["source_links"]
+                    test_q["source_links"] = {
+                        source_link: url_to_content[source_link]
+                        for source_link in test_q["source_links"]
+                    }
 
-                crowd_forecast = test_question['crowd'][-1]['forecast']
-                test_q["crowd_prediction"] = "yes" if crowd_forecast > 0.5 else "no" if crowd_forecast < 0.5 else None
-                test_q["crowd_correct"] = test_q['crowd_prediction'] == test_q["answer"]
-
+                crowd_forecast = test_question["crowd"][-1]["forecast"]
+                test_q["crowd_prediction"] = (
+                    "yes"
+                    if crowd_forecast > 0.5
+                    else "no" if crowd_forecast < 0.5 else None
+                )
+                test_q["crowd_correct"] = test_q["crowd_prediction"] == test_q["answer"]
 
                 CURRENT_RETRIES = 0
 
@@ -236,30 +257,35 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 2
+    # kwargs["num_questions"] = 2
     kwargs["tools"] = [
         # "prediction-online",
-        # "prediction-offline",
+        "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
-        'prediction-request-rag',
-        "prediction-request-reasoning",
-        "prediction-url-cot",
+        # 'prediction-request-rag',
+        # "prediction-request-reasoning",
+        # "prediction-url-cot",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
     ]
-    kwargs["llm_provider"] = "anthropic"
-    kwargs["model"] = [ # only supports running for one model (takes first in list)
-        "claude-3-haiku-20240307", 
-        # "claude-3-sonnet-20240229", 
+    # kwargs["llm_provider"] = "anthropic"
+    kwargs["llm_provider"] = "openrouter"
+    kwargs["model"] = [  # only supports running for one model (takes first in list)
+        # "claude-3-haiku-20240307",
+        # "claude-3-sonnet-20240229",
         # "claude-3-opus-20240229",
         # "gpt-3.5-turbo-0125",
-        # "gpt-4-0125-preview"
+        # "gpt-4-0125-preview",
+        # "cohere/command-r-plus",
+        # "mistralai/mistral-medium"
+        "mistralai/mixtral-8x22b"
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
     kwargs["api_keys"]["anthropic"] = os.getenv("ANTHROPIC_API_KEY")
+    kwargs["api_keys"]["openrouter"] = os.getenv("OPENROUTER_API_KEY")
     kwargs["api_keys"]["google_api_key"] = os.getenv("GOOGLE_API_KEY")
     kwargs["api_keys"]["google_engine_id"] = os.getenv("GOOGLE_ENGINE_ID")
     kwargs["api_keys"]["tavily"] = os.getenv("TAVILY_API_KEY")
