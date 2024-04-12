@@ -22,6 +22,9 @@ from mech.packages.psouranis.customs.optimization_by_prompting import (
 from mech.packages.polywrap.customs.prediction_with_research_report import (
     prediction_with_research_report,
 )
+from mech.packages.napthaai.customs.prediction_request_reasoning import (
+    prediction_request_reasoning,
+)
 import time
 from tqdm import tqdm
 from benchmark.utils import get_logger, TokenCounterCallback
@@ -42,6 +45,7 @@ def tool_map(tool):
         "prediction-offline-sme": prediction_request_sme,
         "prediction-online-sme": prediction_request_sme,
         "prediction-request-rag": prediction_request_rag,
+        "prediction-request-reasoning": prediction_request_reasoning,
         "prediction-with-research-conservative": prediction_with_research_report,
         "prediction-with-research-bold": prediction_with_research_report,
     }
@@ -273,15 +277,15 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 2
+    kwargs["num_questions"] = 10
     kwargs["tools"] = [
-        "prediction-online",
+        # "prediction-online",
         # "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
-        # 'prediction-request-rag',
-        # "prediction-request-reasoning",
+        # "prediction-request-rag",
+        "prediction-request-reasoning",
         # "prediction-url-cot",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
@@ -294,9 +298,9 @@ if __name__ == "__main__":
         # "claude-3-opus-20240229",
         # "gpt-3.5-turbo-0125",
         # "gpt-4-0125-preview",
-        # "cohere/command-r-plus",
+        "cohere/command-r-plus",
         # "mistralai/mistral-medium"
-        "mistralai/mixtral-8x22b"
+        # "mistralai/mixtral-8x22b"
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
