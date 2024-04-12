@@ -75,9 +75,25 @@ def prepare_questions(kwargs):
 
 
 def parse_response(response, test_q):
-    result = json.loads(response[0])
-    test_q["p_yes"] = float(result["p_yes"])
-    test_q["p_no"] = float(result["p_no"])
+    try:
+        result = json.loads(response[0])
+    except Exception as e:
+        print("The response is not json-format compatible")
+        print(f"################### response[0] = {response[0]}")
+        test_q["Correct"] = False
+        test_q["prediction"] = None
+        return test_q
+
+    if "p_yes" in result.keys():
+        test_q["p_yes"] = float(result["p_yes"])
+    else:
+        test_q["p_yes"] = None
+
+    if "p_no" in result.keys():
+        test_q["p_no"] = float(result["p_no"])
+    else:
+        test_q["p_no"] = None
+
     if response[3] is not None:
         test_q["input_tokens"] = response[3].cost_dict["input_tokens"]
         test_q["output_tokens"] = response[3].cost_dict["output_tokens"]
@@ -86,7 +102,8 @@ def parse_response(response, test_q):
         test_q["output_cost"] = response[3].cost_dict["output_cost"]
         test_q["total_cost"] = response[3].cost_dict["total_cost"]
     test_q["prompt_response"] = response[1].replace(os.linesep, "")
-    if float(result["p_yes"]) == float(result["p_no"]):
+
+    if (test_q["p_yes"] is None) or (float(result["p_yes"]) == float(result["p_no"])):
         test_q["prediction"] = None
     else:
         test_q["prediction"] = "yes" if test_q["p_yes"] > test_q["p_no"] else "no"
@@ -207,7 +224,6 @@ def run_benchmark(kwargs):
                 test_q["crowd_correct"] = test_q["crowd_prediction"] == test_q["answer"]
 
                 CURRENT_RETRIES = 0
-
                 while True:
                     try:
                         tool = tool_map(t)
@@ -257,10 +273,10 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    # kwargs["num_questions"] = 2
+    kwargs["num_questions"] = 2
     kwargs["tools"] = [
-        # "prediction-online",
-        "prediction-offline",
+        "prediction-online",
+        # "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
