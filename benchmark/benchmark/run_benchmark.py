@@ -25,6 +25,10 @@ from mech.packages.polywrap.customs.prediction_with_research_report import (
 from mech.packages.napthaai.customs.prediction_request_reasoning import (
     prediction_request_reasoning,
 )
+
+from mech.packages.napthaai.customs.prediction_url_cot import (
+    prediction_url_cot,
+)
 import time
 from tqdm import tqdm
 from benchmark.utils import get_logger, TokenCounterCallback
@@ -46,6 +50,7 @@ def tool_map(tool):
         "prediction-online-sme": prediction_request_sme,
         "prediction-request-rag": prediction_request_rag,
         "prediction-request-reasoning": prediction_request_reasoning,
+        "prediction-url-cot": prediction_url_cot,
         "prediction-with-research-conservative": prediction_with_research_report,
         "prediction-with-research-bold": prediction_with_research_report,
     }
@@ -284,8 +289,8 @@ if __name__ == "__main__":
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
-        # "prediction-request-rag",
-        "prediction-request-reasoning",
+        "prediction-request-rag",
+        # "prediction-request-reasoning",
         # "prediction-url-cot",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
