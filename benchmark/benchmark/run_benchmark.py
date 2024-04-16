@@ -29,6 +29,9 @@ from mech.packages.napthaai.customs.prediction_request_reasoning import (
 from mech.packages.napthaai.customs.prediction_url_cot import (
     prediction_url_cot,
 )
+
+from mech.packages.napthaai.customs.prediction_request_rag_cohere import prediction_request_rag_cohere
+
 import time
 from tqdm import tqdm
 from benchmark.utils import get_logger, TokenCounterCallback
@@ -49,6 +52,7 @@ def tool_map(tool):
         "prediction-offline-sme": prediction_request_sme,
         "prediction-online-sme": prediction_request_sme,
         "prediction-request-rag": prediction_request_rag,
+        "prediction-request-rag-cohere": prediction_request_rag_cohere,
         "prediction-request-reasoning": prediction_request_reasoning,
         "prediction-url-cot": prediction_url_cot,
         "prediction-with-research-conservative": prediction_with_research_report,
@@ -85,7 +89,8 @@ def prepare_questions(kwargs):
 
 def parse_response(response, test_q):
     try:
-        result = json.loads(response[0])
+        #result = json.loads(response[0])
+        result = response[0]
     except Exception as e:
         print("The response is not json-format compatible")
         print(f"################### response[0] = {response[0]}")
@@ -246,7 +251,6 @@ def run_benchmark(kwargs):
                                 f"===========ACCURACY============== {correct_answers/total_answers*100}%"
                             )
                         break
-
                     except openai.APIError as e:
                         logger.error(f"Error running benchmark for tool {t}: {e}")
                         CURRENT_RETRIES += 1
@@ -289,9 +293,10 @@ if __name__ == "__main__":
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
-        "prediction-request-rag",
+        #"prediction-request-rag",
+        "prediction-request-rag-cohere",
         # "prediction-request-reasoning",
-        # "prediction-url-cot",
+        #"prediction-url-cot",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
     ]
@@ -305,7 +310,7 @@ if __name__ == "__main__":
         # "gpt-4-0125-preview",
         "cohere/command-r-plus",
         # "mistralai/mistral-medium"
-        # "mistralai/mixtral-8x22b"
+        #"mistralai/mixtral-8x22b"
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
