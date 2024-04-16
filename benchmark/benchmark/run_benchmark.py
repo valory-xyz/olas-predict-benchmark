@@ -180,6 +180,7 @@ def run_benchmark(kwargs):
     time_string = time.strftime("%y%m%d%H%M%S", time.localtime(start_time))
     csv_file_path = results_path / f"results_{time_string}.csv"
 
+    logger.info("Creating csv files...")
     with open(csv_file_path, mode="a", newline="") as file:
         fieldnames = [
             "prompt",
@@ -207,6 +208,12 @@ def run_benchmark(kwargs):
             writer.writeheader()
 
         for t in tools:
+            logger.info("Loading the tool...")
+            try:
+                tool = tool_map(t)
+            except Exception as e:
+                logger.error(f"Error while loading the tool={tool}")
+                continue
             correct_answers = 0
             total_answers = 0
             for test_question in tqdm(
@@ -240,7 +247,6 @@ def run_benchmark(kwargs):
                 CURRENT_RETRIES = 0
                 while True:
                     try:
-                        tool = tool_map(t)
                         response = tool.run(**{**test_q, **kwargs})
                         test_q = parse_response(response, test_q)
                         if test_q["Correct"] == True:

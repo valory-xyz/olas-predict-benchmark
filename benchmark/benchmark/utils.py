@@ -44,7 +44,6 @@ class TokenCounterCallback:
         "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
         "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},
         "cohere/command-r-plus": {"input": 0.003, "output": 0.015},
-        "mistralai/mistral-medium": {"input": 0.0027, "output": 0.0081},
         "mistralai/mixtral-8x22b": {"input": 0.00108, "output": 0.00108},
     }
 
