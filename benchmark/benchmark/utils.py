@@ -44,7 +44,11 @@ class TokenCounterCallback:
         "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
         "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},
         "cohere/command-r-plus": {"input": 0.003, "output": 0.015},
-        "mistralai/mixtral-8x22b": {"input": 0.00108, "output": 0.00108},
+        "databricks/dbrx-instruct:nitro": {"input": 0.0009, "output": 0.0009},
+        "nousresearch/nous-hermes-2-mixtral-8x7b-sft": {
+            "input": 0.00054,
+            "output": 0.00054,
+        },
     }
 
     def __init__(self) -> None:

@@ -89,8 +89,7 @@ def prepare_questions(kwargs):
 
 def parse_response(response, test_q):
     try:
-        #result = json.loads(response[0])
-        result = response[0]
+        result = json.loads(response[0])
     except Exception as e:
         print("The response is not json-format compatible")
         print(f"################### response[0] = {response[0]}")
@@ -315,8 +314,8 @@ if __name__ == "__main__":
         # "gpt-3.5-turbo-0125",
         # "gpt-4-0125-preview",
         "cohere/command-r-plus",
-        # "mistralai/mistral-medium"
-        #"mistralai/mixtral-8x22b"
+        # "databricks/dbrx-instruct:nitro"
+        # "nousresearch/nous-hermes-2-mixtral-8x7b-sft"
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
