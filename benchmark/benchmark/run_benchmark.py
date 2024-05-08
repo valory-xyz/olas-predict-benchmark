@@ -29,7 +29,6 @@ from mech.packages.napthaai.customs.prediction_request_reasoning import (
 from mech.packages.napthaai.customs.prediction_url_cot import (
     prediction_url_cot,
 )
-
 from mech.packages.napthaai.customs.prediction_request_rag_cohere import prediction_request_rag_cohere
 
 import time
@@ -48,13 +47,17 @@ def tool_map(tool):
     tool_dict = {
         "prediction-online": prediction_request,
         "prediction-offline": prediction_request,
+        "claude-prediction-offline": prediction_request,
         "prediction-online-summarized-info": prediction_request,
         "prediction-offline-sme": prediction_request_sme,
         "prediction-online-sme": prediction_request_sme,
         "prediction-request-rag": prediction_request_rag,
+        "prediction-request-rag-claude": prediction_request_rag,
         "prediction-request-rag-cohere": prediction_request_rag_cohere,
         "prediction-request-reasoning": prediction_request_reasoning,
+        "prediction-request-reasoning-claude": prediction_request_reasoning,
         "prediction-url-cot": prediction_url_cot,
+        "prediction-url-cot-claude": prediction_url_cot,
         "prediction-with-research-conservative": prediction_with_research_report,
         "prediction-with-research-bold": prediction_with_research_report,
     }
@@ -106,6 +109,8 @@ def parse_response(response, test_q):
         test_q["p_no"] = float(result["p_no"])
     else:
         test_q["p_no"] = None
+
+    test_q["confidence"] = result["confidence"]
 
     if response[3] is not None:
         test_q["input_tokens"] = response[3].cost_dict["input_tokens"]
@@ -188,6 +193,7 @@ def run_benchmark(kwargs):
             "model",
             "p_yes",
             "p_no",
+            "confidence",
             "prediction",
             "Correct",
             "input_tokens",
@@ -291,29 +297,32 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 10
+    # kwargs["num_questions"] = 2
     kwargs["tools"] = [
-        # "prediction-online",
+        "prediction-online",
         # "prediction-offline",
+        # "claude-prediction-online",
+        # "claude-prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
-        #"prediction-request-rag",
-        "prediction-request-rag-cohere",
+        # "prediction-request-rag",
+        # "prediction-request-rag-claude",
+        # "prediction-request-rag-cohere",
         # "prediction-request-reasoning",
-        #"prediction-url-cot",
+        # "prediction-request-reasoning-claude",
+        # "prediction-url-cot",
+        # "prediction-url-cot-claude",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
     ]
-    # kwargs["llm_provider"] = "anthropic"
-    kwargs["llm_provider"] = "openrouter"
     kwargs["model"] = [  # only supports running for one model (takes first in list)
         # "claude-3-haiku-20240307",
         # "claude-3-sonnet-20240229",
         # "claude-3-opus-20240229",
-        # "gpt-3.5-turbo-0125",
+        "gpt-3.5-turbo-0125",
         # "gpt-4-0125-preview",
-        "cohere/command-r-plus",
+        # "cohere/command-r-plus",
         # "databricks/dbrx-instruct:nitro"
         # "nousresearch/nous-hermes-2-mixtral-8x7b-sft"
     ]
