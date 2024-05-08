@@ -7,6 +7,7 @@ from mech.packages.valory.customs.resolve_market import resolve_market
 from mech.packages.napthaai.customs.resolve_market_reasoning import (
     resolve_market_reasoning,
 )
+from mech.packages.kongzii.customs.ofv_market_resolver import ofv_market_resolver
 import os
 import openai
 import pandas as pd
@@ -31,6 +32,8 @@ def tool_map(tool):
         "resolve-market-reasoning-gpt-4",
     ]:
         return resolve_market_reasoning
+    elif tool in ["ofv-market-resolver"]:
+        return ofv_market_resolver
     else:
         raise Exception(f"Tool {tool} not found.")
 
@@ -70,16 +73,14 @@ def parse_response(response, test_q):
     else:
         test_q["prediction"] = None
 
-    test_q["reasoning"] = response[1].replace(os.linesep, "")
-    test_q["prompt_response"] = response[2].replace(os.linesep, "")
-    test_q["queries"] = response[3]
+    test_q["prompt_response"] = response[1].replace(os.linesep, "")
 
     if test_q["prediction"] in ("yes", "no"):
         test_q["Correct"] = test_q["prediction"] == test_q["answer"]
     else:
         test_q["Correct"] = None
 
-    if response[4] is not None:
+    if response[3] is not None:
         test_q["input_tokens"] = response[4].cost_dict["input_tokens"]
         test_q["output_tokens"] = response[4].cost_dict["output_tokens"]
         test_q["total_tokens"] = response[4].cost_dict["total_tokens"]
@@ -249,8 +250,9 @@ if __name__ == "__main__":
     kwargs["num_questions"] = 5
     kwargs["tools"] = [
         # "resolve-market",
-        "resolve-market-reasoning-gpt-3.5-turbo",
+        # "resolve-market-reasoning-gpt-3.5-turbo",
         # "resolve-market-reasoning-gpt-4",
+        "ofv-market-resolver",
     ]
     kwargs["api_keys"] = {}
     kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
@@ -258,6 +260,7 @@ if __name__ == "__main__":
     kwargs["api_keys"]["google_api_key"] = os.getenv("google_api_key")
     kwargs["api_keys"]["google_engine_id"] = os.getenv("google_engine_id")
     kwargs["api_keys"]["newsapi"] = os.getenv("NEWS_API_KEY")
+    kwargs["api_keys"]["serperapi"] = os.getenv("SERPER_API_KEY")
     kwargs["num_urls"] = 3
     kwargs["num_words"] = 300
     run_benchmark(kwargs)
