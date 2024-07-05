@@ -9,6 +9,7 @@ import pandas as pd
 from pathlib import Path
 import pickle
 from mech.packages.valory.customs.prediction_request import prediction_request
+from mech.packages.valory.skills.task_execution.utils.apis import KeyChain
 from mech.packages.nickcom007.customs.prediction_request_sme import (
     prediction_request_sme,
 )
@@ -30,7 +31,9 @@ from mech.packages.napthaai.customs.prediction_url_cot import (
     prediction_url_cot,
 )
 
-from mech.packages.napthaai.customs.prediction_request_rag_cohere import prediction_request_rag_cohere
+from mech.packages.napthaai.customs.prediction_request_rag_cohere import (
+    prediction_request_rag_cohere,
+)
 
 import time
 from tqdm import tqdm
@@ -88,6 +91,7 @@ def prepare_questions(kwargs):
 
 
 def parse_response(response, test_q):
+    print("Parsing response from the model")
     try:
         result = json.loads(response[0])
     except Exception as e:
@@ -291,17 +295,17 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 10
+    kwargs["num_questions"] = 2
     kwargs["tools"] = [
         # "prediction-online",
         # "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
-        #"prediction-request-rag",
+        # "prediction-request-rag",
         "prediction-request-rag-cohere",
         # "prediction-request-reasoning",
-        #"prediction-url-cot",
+        # "prediction-url-cot",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
     ]
@@ -317,13 +321,18 @@ if __name__ == "__main__":
         # "databricks/dbrx-instruct:nitro"
         # "nousresearch/nous-hermes-2-mixtral-8x7b-sft"
     ]
-    kwargs["api_keys"] = {}
-    kwargs["api_keys"]["openai"] = os.getenv("OPENAI_API_KEY")
-    kwargs["api_keys"]["anthropic"] = os.getenv("ANTHROPIC_API_KEY")
-    kwargs["api_keys"]["openrouter"] = os.getenv("OPENROUTER_API_KEY")
-    kwargs["api_keys"]["google_api_key"] = os.getenv("GOOGLE_API_KEY")
-    kwargs["api_keys"]["google_engine_id"] = os.getenv("GOOGLE_ENGINE_ID")
-    kwargs["api_keys"]["tavily"] = os.getenv("TAVILY_API_KEY")
+    api_keys = KeyChain(
+        {
+            "openai": [os.getenv("OPENAI_API_KEY")],
+            "google_api_key": [os.getenv("GOOGLE_API_KEY")],
+            "google_engine_id": [os.getenv("GOOGLE_ENGINE_ID")],
+            "anthropic": [os.getenv("ANTHROPIC_API_KEY")],
+            "openrouter": [os.getenv("OPENROUTER_API_KEY")],
+        }
+    )
+    kwargs["api_keys"] = api_keys
+    # kwargs["api_keys"] = {}
+    # kwargs["api_keys"]["tavily"] = os.getenv("TAVILY_API_KEY")
 
     kwargs["num_urls"] = 3
     kwargs["num_words"] = 300
