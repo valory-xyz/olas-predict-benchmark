@@ -1,0 +1,3 @@
+prompt,answer,tool,model,p_yes,p_no,prediction,Correct,input_tokens,output_tokens,total_tokens,input_cost,output_cost,total_cost,prompt_response,error,crowd_prediction,crowd_correct
+Will the Export-Import Bank of the United States be re-authorized before 1 January 2016?,yes,prediction-request-rag-cohere,cohere/command-r-plus,,,,False,,,,,,,,,yes,True
+"Will a trilateral meeting take place between Chinese President Xi Jinping, Japanese Prime Minister Shinzo Abe, and South Korean President Park Geun-hye before 1 January 2016?",no,prediction-request-rag-cohere,cohere/command-r-plus,,,,False,,,,,,,,,no,True

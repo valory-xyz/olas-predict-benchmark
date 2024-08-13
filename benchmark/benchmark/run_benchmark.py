@@ -297,15 +297,15 @@ if __name__ == "__main__":
     kwargs = {}
     kwargs["num_questions"] = 2
     kwargs["tools"] = [
-        # "prediction-online",
-        # "prediction-offline",
-        # "prediction-online-summarized-info",
-        # "prediction-offline-sme",
-        # "prediction-online-sme",
-        # "prediction-request-rag",
+        "prediction-online",
+        "prediction-offline",
+        "prediction-online-summarized-info",
+        "prediction-offline-sme",
+        "prediction-online-sme",
+        "prediction-request-rag",
         "prediction-request-rag-cohere",
-        # "prediction-request-reasoning",
-        # "prediction-url-cot",
+        "prediction-request-reasoning",
+        "prediction-url-cot",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
     ]
@@ -317,7 +317,9 @@ if __name__ == "__main__":
         # "claude-3-opus-20240229",
         # "gpt-3.5-turbo-0125",
         # "gpt-4-0125-preview",
-        "cohere/command-r-plus",
+        "gpt-4o-2024-08-06",
+        "claude-3-5-sonnet-20240620",
+        # "cohere/command-r-plus",
         # "databricks/dbrx-instruct:nitro"
         # "nousresearch/nous-hermes-2-mixtral-8x7b-sft"
     ]
