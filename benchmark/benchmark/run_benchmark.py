@@ -13,36 +13,33 @@ import importlib
 prediction_request = importlib.import_module(
     "mech-predict.packages.valory.customs.prediction_request.prediction_request"
 )
-# this does not work because of the - in the name
-# from mech-predict.packages.valory.customs.prediction_request import prediction_request
 KeyChain = importlib.import_module(
     "mech-predict.packages.valory.skills.task_execution.utils.apis"
 ).KeyChain
-# from mech-predict.packages.valory.skills.task_execution.utils.apis import KeyChain
-# from mech-predict.packages.nickcom007.customs.prediction_request_sme import (
-#     prediction_request_sme,
-# )
-# from mech-predict.packages.napthaai.customs.prediction_request_rag import prediction_request_rag
-# from mech-predict.packages.valory.customs.prediction_request_embedding import (
-#     prediction_sentence_embedding,
-# )
-# from mech-predict.packages.psouranis.customs.optimization_by_prompting import (
-#     optimization_by_prompting,
-# )
-# from mech-predict.packages.polywrap.customs.prediction_with_research_report import (
-#     prediction_with_research_report,
-# )
-# from mech-predict.packages.napthaai.customs.prediction_request_reasoning import (
-#     prediction_request_reasoning,
-# )
-
-# from mech-predict.packages.napthaai.customs.prediction_url_cot import (
-#     prediction_url_cot,
-# )
-
-# from mech-predict.packages.napthaai.customs.prediction_request_rag_cohere import (
-#     prediction_request_rag_cohere,
-# )
+prediction_request_sme = importlib.import_module(
+    "mech-predict.packages.valory.customs.prediction_request_sme.prediction_request_sme"
+)
+prediction_request_rag = importlib.import_module(
+    "mech-predict.packages.napthaai.customs.prediction_request_rag.prediction_request_rag"
+)
+prediction_sentence_embedding = importlib.import_module(
+    "mech-predict.packages.valory.customs.prediction_request_embedding.prediction_sentence_embedding"
+)
+prediction_request_reasoning = importlib.import_module(
+    "mech-predict.packages.napthaai.customs.prediction_request_reasoning.prediction_request_reasoning"
+)
+optimization_by_prompting = importlib.import_module(
+    "mech-predict.packages.psouranis.customs.optimization_by_prompting.optimization_by_prompting"
+)
+prediction_with_research_report = importlib.import_module(
+    "mech-predict.packages.polywrap.customs.prediction_with_research_report.prediction_with_research_report"
+)
+prediction_url_cot = importlib.import_module(
+    "mech-predict.packages.napthaai.customs.prediction_url_cot.prediction_url_cot"
+)
+prediction_request_rag_cohere = importlib.import_module(
+    "mech-predict.packages.napthaai.customs.prediction_request_rag_cohere.prediction_request_rag_cohere"
+)
 
 import time
 from tqdm import tqdm
