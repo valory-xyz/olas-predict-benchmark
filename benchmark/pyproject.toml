@@ -6,15 +6,15 @@ authors = ["Richard Blythman <richardblythman@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.12"
 ipykernel = "^6.29.0"
-python-dotenv = "^0.17.0"
+python-dotenv = "^0.21.0"
 pandas = "^2.1.1"
 tqdm = "^4.66.1"
 ruff = "^0.1.13"
-tiktoken = "^0.5.1"
+tiktoken = "^0.7.0"
 huggingface-hub = "^0.20.3"
-mech = { path = "./mech", develop = true }
+mech = { git = "https://github.com/valory-xyz/mech-predict.git", tag = "v0.2.0" }
 pypdf2 = "^3.0.1"
 readability-lxml = "^0.8.1"
 html2text = "^2020.1.16"

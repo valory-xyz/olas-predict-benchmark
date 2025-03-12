@@ -3,8 +3,8 @@
 import csv
 from dotenv import load_dotenv
 import json
-from mech.packages.valory.customs.resolve_market import resolve_market
-from mech.packages.napthaai.customs.resolve_market_reasoning import (
+from mech-predict.packages.valory.customs.resolve_market import resolve_market
+from mech-predict.packages.napthaai.customs.resolve_market_reasoning import (
     resolve_market_reasoning,
 )
 import os
@@ -190,9 +190,7 @@ def run_benchmark(kwargs):
                 test_q["crowd_prediction"] = (
                     "yes"
                     if crowd_forecast > 0.5
-                    else "no"
-                    if crowd_forecast < 0.5
-                    else None
+                    else "no" if crowd_forecast < 0.5 else None
                 )
                 test_q["crowd_correct"] = test_q["crowd_prediction"] == test_q["answer"]
 

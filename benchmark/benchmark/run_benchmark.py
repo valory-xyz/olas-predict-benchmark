@@ -8,32 +8,41 @@ import openai
 import pandas as pd
 from pathlib import Path
 import pickle
-from mech.packages.valory.customs.prediction_request import prediction_request
-from mech.packages.valory.skills.task_execution.utils.apis import KeyChain
-from mech.packages.nickcom007.customs.prediction_request_sme import (
-    prediction_request_sme,
-)
-from mech.packages.napthaai.customs.prediction_request_rag import prediction_request_rag
-from mech.packages.valory.customs.prediction_request_embedding import (
-    prediction_sentence_embedding,
-)
-from mech.packages.psouranis.customs.optimization_by_prompting import (
-    optimization_by_prompting,
-)
-from mech.packages.polywrap.customs.prediction_with_research_report import (
-    prediction_with_research_report,
-)
-from mech.packages.napthaai.customs.prediction_request_reasoning import (
-    prediction_request_reasoning,
-)
+import importlib
 
-from mech.packages.napthaai.customs.prediction_url_cot import (
-    prediction_url_cot,
+prediction_request = importlib.import_module(
+    "mech-predict.packages.valory.customs.prediction_request.prediction_request"
 )
+# this does not work because of the - in the name
+# from mech-predict.packages.valory.customs.prediction_request import prediction_request
+KeyChain = importlib.import_module(
+    "mech-predict.packages.valory.skills.task_execution.utils.apis"
+).KeyChain
+# from mech-predict.packages.valory.skills.task_execution.utils.apis import KeyChain
+# from mech-predict.packages.nickcom007.customs.prediction_request_sme import (
+#     prediction_request_sme,
+# )
+# from mech-predict.packages.napthaai.customs.prediction_request_rag import prediction_request_rag
+# from mech-predict.packages.valory.customs.prediction_request_embedding import (
+#     prediction_sentence_embedding,
+# )
+# from mech-predict.packages.psouranis.customs.optimization_by_prompting import (
+#     optimization_by_prompting,
+# )
+# from mech-predict.packages.polywrap.customs.prediction_with_research_report import (
+#     prediction_with_research_report,
+# )
+# from mech-predict.packages.napthaai.customs.prediction_request_reasoning import (
+#     prediction_request_reasoning,
+# )
 
-from mech.packages.napthaai.customs.prediction_request_rag_cohere import (
-    prediction_request_rag_cohere,
-)
+# from mech-predict.packages.napthaai.customs.prediction_url_cot import (
+#     prediction_url_cot,
+# )
+
+# from mech-predict.packages.napthaai.customs.prediction_request_rag_cohere import (
+#     prediction_request_rag_cohere,
+# )
 
 import time
 from tqdm import tqdm
@@ -51,15 +60,15 @@ def tool_map(tool):
     tool_dict = {
         "prediction-online": prediction_request,
         "prediction-offline": prediction_request,
-        "prediction-online-summarized-info": prediction_request,
-        "prediction-offline-sme": prediction_request_sme,
-        "prediction-online-sme": prediction_request_sme,
-        "prediction-request-rag": prediction_request_rag,
-        "prediction-request-rag-cohere": prediction_request_rag_cohere,
-        "prediction-request-reasoning": prediction_request_reasoning,
-        "prediction-url-cot": prediction_url_cot,
-        "prediction-with-research-conservative": prediction_with_research_report,
-        "prediction-with-research-bold": prediction_with_research_report,
+        # "prediction-online-summarized-info": prediction_request,
+        # "prediction-offline-sme": prediction_request_sme,
+        # "prediction-online-sme": prediction_request_sme,
+        # "prediction-request-rag": prediction_request_rag,
+        # "prediction-request-rag-cohere": prediction_request_rag_cohere,
+        # "prediction-request-reasoning": prediction_request_reasoning,
+        # "prediction-url-cot": prediction_url_cot,
+        # "prediction-with-research-conservative": prediction_with_research_report,
+        # "prediction-with-research-bold": prediction_with_research_report,
     }
 
     tool = tool_dict.get(tool, None)
@@ -92,6 +101,7 @@ def prepare_questions(kwargs):
 
 def parse_response(response, test_q):
     print("Parsing response from the model")
+    # print(f"response = {response}")
     try:
         result = json.loads(response[0])
     except Exception as e:
@@ -295,17 +305,17 @@ def run_benchmark(kwargs):
 
 if __name__ == "__main__":
     kwargs = {}
-    kwargs["num_questions"] = 2
+    # kwargs["num_questions"] = 1
     kwargs["tools"] = [
         "prediction-online",
-        "prediction-offline",
-        "prediction-online-summarized-info",
-        "prediction-offline-sme",
-        "prediction-online-sme",
-        "prediction-request-rag",
-        "prediction-request-rag-cohere",
-        "prediction-request-reasoning",
-        "prediction-url-cot",
+        # "prediction-offline",
+        # "prediction-online-summarized-info",
+        # "prediction-offline-sme",
+        # "prediction-online-sme",
+        # "prediction-request-rag",
+        # "prediction-request-rag-cohere",
+        # "prediction-request-reasoning",
+        # "prediction-url-cot",
         # "prediction-with-research-conservative",
         # "prediction-with-research-bold",
     ]
@@ -316,10 +326,10 @@ if __name__ == "__main__":
         # "claude-3-opus-20240229",
         # "gpt-3.5-turbo-0125",
         # "gpt-4-0125-preview",
-        "gpt-4o-2024-08-06",
-        "claude-3-5-sonnet-20240620",
+        # "gpt-4o-2024-08-06",
+        # "claude-3-5-sonnet-20240620",
         # "cohere/command-r-plus",
-        # "databricks/dbrx-instruct:nitro"
+        "databricks/dbrx-instruct:nitro",
         # "nousresearch/nous-hermes-2-mixtral-8x7b-sft"
     ]
     api_keys = KeyChain(
