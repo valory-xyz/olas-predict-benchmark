@@ -304,8 +304,8 @@ if __name__ == "__main__":
     kwargs = {}
     # kwargs["num_questions"] = 1
     kwargs["tools"] = [
-        "prediction-online",
-        # "prediction-offline",
+        # "prediction-online",
+        "prediction-offline",
         # "prediction-online-summarized-info",
         # "prediction-offline-sme",
         # "prediction-online-sme",
@@ -345,4 +345,7 @@ if __name__ == "__main__":
     kwargs["num_urls"] = 3
     kwargs["num_words"] = 300
     kwargs["provide_source_links"] = True
+    # for prediction offline -> no source_links
+    if len(kwargs["tools"]) == 1 and kwargs["tools"][0] == "prediction_offline":
+        kwargs["provide_source_links"] = False
     run_benchmark(kwargs)
